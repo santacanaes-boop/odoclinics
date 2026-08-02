@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+/* Foco de teclado siempre visible — accesibilidad en tablet compartida */
+:focus-visible {
+  outline: 2px solid #7a1f82;
+  outline-offset: 2px;
+}

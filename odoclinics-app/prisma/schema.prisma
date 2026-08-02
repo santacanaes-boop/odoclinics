@@ -1,0 +1,193 @@
+// Odoclinics — Modelo de datos (Fase 1)
+// Ver ODOCLINICS_ESPECIFICACION_TECNICA.md sección 5 para el diseño original.
+//
+// Nota sobre cifrado de campo: Prisma no cifra a nivel de campo de forma nativa.
+// Para producción, los campos marcados "// CIFRAR" deben pasar por una capa de
+// cifrado/descifrado (p.ej. mediante Prisma middleware o una librería como
+// @47ng/cloak) antes de llegar a la base de datos. No se implementa aquí para
+// no ocultar la lógica de negocio del scaffold, pero es un requisito de la
+// sección 7 antes de manejar pacientes reales.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios, roles y permisos (sección 4.11)
+// ---------------------------------------------------------------------------
+
+model Rol {
+  id        String   @id @default(cuid())
+  nombre    String   @unique // "Administrador" | "Recepción" | "Higienista-auxiliar" | "Gestoría externa" | "Otro"
+  // Mapa módulo -> nivel de acceso ("ninguno" | "lectura" | "total")
+  permisos  Json
+  usuarios  Usuario[]
+  createdAt DateTime @default(now())
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  rolId        String
+  rol          Rol      @relation(fields: [rolId], references: [id])
+  activo       Boolean  @default(true)
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String? // CIFRAR
+  intentosFallidos Int  @default(0)
+  bloqueadoHasta   DateTime?
+  createdAt    DateTime @default(now())
+
+  citas        Cita[]           @relation("Profesional")
+  auditorias   RegistroAuditoria[]
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría (obligatorio LOPD-GDD — sección 7)
+// ---------------------------------------------------------------------------
+
+model RegistroAuditoria {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  accion     String   // "VER_HISTORIAL" | "EDITAR_PACIENTE" | "CREAR_CITA" | ...
+  entidad    String   // "Paciente" | "Cita" | ...
+  entidadId  String
+  detalle    Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([usuarioId])
+}
+
+// ---------------------------------------------------------------------------
+// Paciente y ficha clínica/administrativa (sección 4.3)
+// ---------------------------------------------------------------------------
+
+model Paciente {
+  id             String   @id @default(cuid())
+  nombre         String
+  apellidos      String
+  dniNie         String   @unique // CIFRAR
+  fechaNacimiento DateTime
+  telefono       String   // CIFRAR
+  email          String?  // CIFRAR
+  direccion      String?  // CIFRAR
+  alertasMedicas String[] // alergias, anticoagulantes... — visible siempre en cabecera
+
+  anamnesis        Anamnesis?
+  historial        HistorialTratamiento[]
+  odontograma      PiezaOdontograma[]
+  recetas          Receta[]
+  radiografias     Radiografia[]
+  consentimientos  Consentimiento[]
+  presupuestos     Presupuesto[]
+  citas            Cita[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Anamnesis {
+  id                    String   @id @default(cuid())
+  pacienteId            String   @unique
+  paciente              Paciente @relation(fields: [pacienteId], references: [id])
+  patologiasPrevias     String[] // CIFRAR
+  alergiasMedicamentosas String[] // CIFRAR
+  medicacionHabitual    String[] // CIFRAR
+  habitos               String[]
+  completadoPorPaciente Boolean  @default(false)
+  fechaActualizacion    DateTime @updatedAt
+}
+
+model HistorialTratamiento {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  fecha       DateTime
+  concepto    String
+  precio      Decimal  @db.Decimal(10, 2)
+  estadoPago  String   // "pagado" | "parcial" | "pendiente"
+  createdAt   DateTime @default(now())
+}
+
+// 32 piezas, notación FDI: 18-11, 21-28, 48-41, 31-38
+model PiezaOdontograma {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  piezaFdi   Int      // 11..48 según notación FDI
+  estado     String   // "sano" | "caries" | "empastado" | "corona" | "ausente"
+  updatedAt  DateTime @updatedAt
+
+  @@unique([pacienteId, piezaFdi])
+}
+
+model Receta {
+  id            String   @id @default(cuid())
+  pacienteId    String
+  paciente      Paciente @relation(fields: [pacienteId], references: [id])
+  fecha         DateTime @default(now())
+  medicamento   String
+  pauta         String
+  prescriptorId String
+  estado        String   // "emitida" | "enviada_sns"
+}
+
+model Radiografia {
+  id                String   @id @default(cuid())
+  pacienteId        String
+  paciente          Paciente @relation(fields: [pacienteId], references: [id])
+  tipo              String   // "panoramica" | "periapical" | "bite-wing"
+  fecha             DateTime @default(now())
+  archivoUrl        String   // storage cifrado en reposo (S3-compatible)
+  dispositivoOrigen String?  // "manual" | nombre del sensor conectado
+}
+
+model Consentimiento {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente @relation(fields: [pacienteId], references: [id])
+  tipo           String
+  estado         String   // "pendiente" | "firmado"
+  fechaFirma     DateTime?
+  firmaImagenUrl String?
+}
+
+model Presupuesto {
+  id           String   @id @default(cuid())
+  pacienteId   String
+  paciente     Paciente @relation(fields: [pacienteId], references: [id])
+  fecha        DateTime @default(now())
+  lineas       Json     // [{concepto, importe}]
+  importeTotal Decimal  @db.Decimal(10, 2)
+  estado       String   // "pendiente" | "aceptado" | "rechazado"
+  pdfUrl       String?
+}
+
+// ---------------------------------------------------------------------------
+// Agenda (sección 4.2)
+// ---------------------------------------------------------------------------
+
+model Cita {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente @relation(fields: [pacienteId], references: [id])
+  gabinete       Int      // 1 | 2
+  fechaHora      DateTime
+  duracionMin    Int
+  tratamiento    String
+  estado         String   // "confirmada" | "pendiente_confirmacion" | "cancelada" | "no_show"
+  profesionalId  String?
+  profesional    Usuario? @relation("Profesional", fields: [profesionalId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([gabinete, fechaHora])
+}
