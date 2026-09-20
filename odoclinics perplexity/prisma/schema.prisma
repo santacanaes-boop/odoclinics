@@ -1,0 +1,372 @@
+// Odoclinics — Modelo de datos (Fase 1)
+// Ver ODOCLINICS_ESPECIFICACION_TECNICA.md sección 5 para el diseño original.
+//
+// Nota sobre cifrado de campo: Prisma no cifra a nivel de campo de forma nativa.
+// Para producción, los campos marcados "// CIFRAR" deben pasar por una capa de
+// cifrado/descifrado (p.ej. mediante Prisma middleware o una librería como
+// @47ng/cloak) antes de llegar a la base de datos. No se implementa aquí para
+// no ocultar la lógica de negocio del scaffold, pero es un requisito de la
+// sección 7 antes de manejar pacientes reales.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios, roles y permisos (sección 4.11)
+// ---------------------------------------------------------------------------
+
+model Rol {
+  id        String   @id @default(cuid())
+  nombre    String   @unique // "Administrador" | "Recepción" | "Higienista-auxiliar" | "Gestoría externa" | "Otro"
+  // Mapa módulo -> nivel de acceso ("ninguno" | "lectura" | "total")
+  permisos  Json
+  usuarios  Usuario[]
+  createdAt DateTime @default(now())
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  rolId        String
+  rol          Rol      @relation(fields: [rolId], references: [id])
+  activo       Boolean  @default(true)
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String? // CIFRAR
+  intentosFallidos Int  @default(0)
+  bloqueadoHasta   DateTime?
+  createdAt    DateTime @default(now())
+
+  citas        Cita[]           @relation("Profesional")
+  auditorias   RegistroAuditoria[]
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría (obligatorio LOPD-GDD — sección 7)
+// ---------------------------------------------------------------------------
+
+model RegistroAuditoria {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  accion     String   // "VER_HISTORIAL" | "EDITAR_PACIENTE" | "CREAR_CITA" | ...
+  entidad    String   // "Paciente" | "Cita" | ...
+  entidadId  String
+  detalle    Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([usuarioId])
+}
+
+// ---------------------------------------------------------------------------
+// Paciente y ficha clínica/administrativa (sección 4.3)
+// ---------------------------------------------------------------------------
+
+model Paciente {
+  id             String   @id @default(cuid())
+  nombre         String
+  apellidos      String
+  dniNie         String   @unique // CIFRAR
+  fechaNacimiento DateTime
+  telefono       String   // CIFRAR
+  email          String?  // CIFRAR
+  direccion      String?  // CIFRAR
+  alertasMedicas String[] // alergias, anticoagulantes... — visible siempre en cabecera
+  // Sección 4.8: alimenta la gráfica "origen de nuevos pacientes" de
+  // Marketing. No está en el modelo de la sección 5 original, pero sin este
+  // campo esa gráfica no tendría datos reales que mostrar.
+  origen         String?  // "Instagram" | "Google" | "Recomendación" | "Web" | "Otro"
+
+  anamnesis        Anamnesis?
+  historial        HistorialTratamiento[]
+  odontograma      PiezaOdontograma[]
+  recetas          Receta[]
+  radiografias     Radiografia[]
+  consentimientos  Consentimiento[]
+  presupuestos     Presupuesto[]
+  facturas         Factura[]
+  citas            Cita[]
+  simulacionesIA   SimulacionIA[]
+  encargosLaboratorio EncargoLaboratorio[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Anamnesis {
+  id                    String   @id @default(cuid())
+  pacienteId            String   @unique
+  paciente              Paciente @relation(fields: [pacienteId], references: [id])
+  patologiasPrevias     String[] // CIFRAR
+  alergiasMedicamentosas String[] // CIFRAR
+  medicacionHabitual    String[] // CIFRAR
+  habitos               String[]
+  completadoPorPaciente Boolean  @default(false)
+  fechaActualizacion    DateTime @updatedAt
+}
+
+model HistorialTratamiento {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  fecha       DateTime
+  concepto    String
+  precio      Decimal  @db.Decimal(10, 2)
+  estadoPago  String   // "pagado" | "parcial" | "pendiente"
+  createdAt   DateTime @default(now())
+}
+
+// 32 piezas, notación FDI: 18-11, 21-28, 48-41, 31-38
+model PiezaOdontograma {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  piezaFdi   Int      // 11..48 según notación FDI
+  estado     String   // "sano" | "caries" | "empastado" | "corona" | "ausente"
+  updatedAt  DateTime @updatedAt
+
+  @@unique([pacienteId, piezaFdi])
+}
+
+model Receta {
+  id            String   @id @default(cuid())
+  pacienteId    String
+  paciente      Paciente @relation(fields: [pacienteId], references: [id])
+  fecha         DateTime @default(now())
+  medicamento   String
+  pauta         String
+  prescriptorId String
+  estado        String   // "emitida" | "enviada_sns"
+}
+
+model Radiografia {
+  id                String   @id @default(cuid())
+  pacienteId        String
+  paciente          Paciente @relation(fields: [pacienteId], references: [id])
+  tipo              String   // "panoramica" | "periapical" | "bite-wing"
+  fecha             DateTime @default(now())
+  archivoUrl        String   // storage cifrado en reposo (S3-compatible)
+  dispositivoOrigen String?  // "manual" | nombre del sensor conectado
+}
+
+model Consentimiento {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente @relation(fields: [pacienteId], references: [id])
+  tipo           String
+  estado         String   // "pendiente" | "firmado"
+  fechaFirma     DateTime?
+  firmaImagenUrl String?
+}
+
+model Presupuesto {
+  id           String   @id @default(cuid())
+  pacienteId   String
+  paciente     Paciente @relation(fields: [pacienteId], references: [id])
+  fecha        DateTime @default(now())
+  lineas       Json     // [{concepto, importe}]
+  importeTotal Decimal  @db.Decimal(10, 2)
+  estado       String   // "pendiente" | "aceptado" | "rechazado"
+  pdfUrl       String?
+}
+
+// Simulador de tratamiento (sección 4.3.8). El "después" de este scaffold
+// es una aproximación visual (ajuste de brillo/saturación en canvas), el
+// mismo enfoque que ya usaba el prototipo HTML original — nunca se
+// presenta como generación real con IA. Conectar un modelo real de
+// generación/edición de imágenes (Google Imagen, DALL·E, Stability AI)
+// queda // TODO Fase 6 (sección 4.12, requiere API key gestionada en
+// servidor).
+model SimulacionIA {
+  id               String   @id @default(cuid())
+  pacienteId       String
+  paciente         Paciente @relation(fields: [pacienteId], references: [id])
+  tratamiento      String   // "blanqueamiento" | "carillas" | "ortodoncia" | "corona"
+  tono             String?  // tono VITA, solo aplica a "blanqueamiento"
+  imagenAntesUrl   String
+  imagenDespuesUrl String
+  createdAt        DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Laboratorio protésico (sección 4.4)
+// ---------------------------------------------------------------------------
+
+model Laboratorio {
+  id       String               @id @default(cuid())
+  nombre   String               @unique
+  encargos EncargoLaboratorio[]
+}
+
+model EncargoLaboratorio {
+  id                    String      @id @default(cuid())
+  pacienteId            String
+  paciente              Paciente    @relation(fields: [pacienteId], references: [id])
+  laboratorioId         String
+  laboratorio           Laboratorio @relation(fields: [laboratorioId], references: [id])
+  trabajo               String
+  coste                 Decimal     @db.Decimal(10, 2)
+  estado                String      // "en_proceso" | "listo_para_colocar" | "colocado"
+  fechaEnvio            DateTime    @default(now())
+  fechaEntregaEstimada  DateTime
+}
+
+// ---------------------------------------------------------------------------
+// Contabilidad (sección 4.5)
+// ---------------------------------------------------------------------------
+
+model Factura {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente @relation(fields: [pacienteId], references: [id])
+  lineas         Json     // [{concepto, importe}]
+  importe        Decimal  @db.Decimal(10, 2)
+  estado         String   // "pagada" | "pendiente" | "anulada"
+  fecha          DateTime @default(now())
+  // Veri-Factu (sección 6 y 9): registro inalterable con huella electrónica
+  // y envío a AEAT. No implementado en este scaffold — requiere certificado
+  // digital y homologación del software. // TODO Fase 6
+  hashVerifactu    String?
+  fechaEnvioAeat   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// No forma parte del modelo de la sección 5 del documento original, pero es
+// imprescindible para que el KPI "gastos del mes" de la sección 4.5 sea un
+// dato real y no una cifra inventada.
+model Gasto {
+  id        String   @id @default(cuid())
+  concepto  String
+  categoria String
+  importe   Decimal  @db.Decimal(10, 2)
+  fecha     DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Stock y compras (sección 4.6)
+// ---------------------------------------------------------------------------
+
+model Proveedor {
+  id        String    @id @default(cuid())
+  nombre    String    @unique
+  productos Producto[]
+  pedidos   PedidoCompra[]
+}
+
+model Producto {
+  id           String     @id @default(cuid())
+  nombre       String
+  categoria    String
+  stockActual  Int        @default(0)
+  stockMinimo  Int        @default(0)
+  proveedorId  String?
+  proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model PedidoCompra {
+  id                    String    @id @default(cuid())
+  proveedorId           String
+  proveedor             Proveedor @relation(fields: [proveedorId], references: [id])
+  lineas                Json      // [{producto, cantidad, precioUnitario}]
+  estado                String    // "en_curso" | "recibido" | "cancelado"
+  fechaPedido           DateTime  @default(now())
+  fechaEntregaEstimada  DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// Seguimiento y comunicación (sección 4.9)
+// ---------------------------------------------------------------------------
+
+// Reglas de automatización: el estado activa/plantilla es real y se
+// persiste, pero el envío efectivo por WhatsApp/email no está implementado
+// — requiere WhatsApp Business API, un proveedor de email transaccional y
+// un scheduler (cron) real contra el que ejecutar las reglas. // TODO Fase 6
+model AutomatizacionMensaje {
+  id         String   @id @default(cuid())
+  disparador String   @unique // "recordatorio_24h" | "confirmacion_reserva" | "revision_anual" | "encuesta_satisfaccion" | "recordatorio_pago" | "presupuesto_sin_agendar"
+  canal      String   // "whatsapp" | "email"
+  activa     Boolean  @default(false)
+  plantilla  String
+  updatedAt  DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Marketing y RRSS (sección 4.8)
+// ---------------------------------------------------------------------------
+
+// No forma parte del modelo de la sección 5 original, pero es imprescindible
+// para que el "calendario de contenidos" tenga datos reales que gestionar.
+model ContenidoMarketing {
+  id        String   @id @default(cuid())
+  titulo    String
+  canal     String   // "instagram" | "facebook" | "email" | "blog"
+  fecha     DateTime
+  estado    String   // "planificado" | "publicado"
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Agenda (sección 4.2)
+// ---------------------------------------------------------------------------
+
+model Cita {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente @relation(fields: [pacienteId], references: [id])
+  gabinete       Int      // 1 | 2
+  fechaHora      DateTime
+  duracionMin    Int
+  tratamiento    String
+  estado         String   // "confirmada" | "pendiente_confirmacion" | "cancelada" | "no_show"
+  profesionalId  String?
+  profesional    Usuario? @relation("Profesional", fields: [profesionalId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([gabinete, fechaHora])
+}
+
+// ---------------------------------------------------------------------------
+// Protección de datos (sección 4.10)
+// ---------------------------------------------------------------------------
+
+// Checklist de cumplimiento RGPD (4.10.1) y ciberseguridad (4.10.3, mismo
+// contenido que la sección 7). Es una atestación manual marcable por el
+// equipo, no un escaneo automático — igual que las copias de seguridad
+// "diaria, cifrada, retención 12 meses" de la sección 4.10.1: este scaffold
+// no tiene infraestructura de backups real que auditar, así que ese punto
+// también es un ítem que el equipo marca cuando lo ha configurado de
+// verdad en su hosting, en vez de fingir un histórico de backups falso.
+model ChecklistItem {
+  id             String    @id @default(cuid())
+  categoria      String    // "rgpd" | "ciberseguridad"
+  texto          String
+  completado     Boolean   @default(false)
+  actualizadoEn  DateTime?
+  actualizadoPor String?
+
+  @@unique([categoria, texto])
+}
+
+// Trazabilidad de esterilización (4.10.2) — exigido por normativa
+// sanitaria: ciclos de autoclave y sus controles biológicos de esporas.
+model CicloEsterilizacion {
+  id              String   @id @default(cuid())
+  equipo          String
+  fecha           DateTime @default(now())
+  controlBiologico String  // "correcto" | "fallido" | "pendiente"
+  notas           String?
+  createdAt       DateTime @default(now())
+}
