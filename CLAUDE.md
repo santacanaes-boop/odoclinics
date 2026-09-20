@@ -103,9 +103,9 @@ necesitan.
   (`bloqueadoHasta` en `Usuario`).
 - El `maxAge` de sesión es de 15 minutos — deliberado, porque la app se usa
   en una tablet compartida en consulta, no un error.
-- MFA está preparado a nivel de schema (`Usuario.mfaEnabled`/`mfaSecret`)
-  pero no implementado; está marcado `// TODO Fase 2` y es un requisito
-  obligatorio antes de manejar pacientes reales.
+- MFA real (TOTP) implementado desde la Fase 6 (`src/lib/mfa.ts`, página
+  `/mfa`) — no se fuerza automáticamente para todos los roles, cada usuario
+  lo activa desde su cuenta. Ver el README del scaffold para el detalle.
 
 ### Modelo de datos (`prisma/schema.prisma`)
 
@@ -115,12 +115,12 @@ la especificación: `Usuario`/`Rol` (auth+RBAC), `RegistroAuditoria`,
 `HistorialTratamiento`, `PiezaOdontograma` — 32 piezas, notación FDI,
 `Receta`, `Radiografia`, `Consentimiento`, `Presupuesto`), y `Cita` (citas,
 con un índice `[gabinete, fechaHora]` usado para comprobar solapes). Los
-campos comentados `// CIFRAR` son los que necesitan cifrado a nivel de campo
-en producción (DNI/NIE, teléfono, dirección, historial médico, etc.); este
-scaffold deliberadamente **no** implementa esa capa de cifrado, para
-mantener visible la lógica de negocio — no añadas una capa de cifrado real
-sin que se pida explícitamente, pero sí sigue marcando `// CIFRAR` en
-cualquier campo sensible nuevo.
+campos comentados `// CIFRAR` (DNI/NIE, teléfono, dirección, anamnesis,
+mfaSecret) van cifrados en BD desde la Fase 6, de forma transparente vía
+Prisma Client Extensions (`src/lib/cifrado.ts`, aplicado en
+`src/lib/prisma.ts`) — ninguna ruta necesita cifrar/descifrar a mano. Sigue
+marcando `// CIFRAR` en cualquier campo sensible nuevo y añádelo a esa
+extensión en vez de dejarlo en texto plano.
 
 La validación de solapes de `Cita` (`src/app/api/citas/route.ts`) se hace
 trayendo las citas del mismo día y mismo `gabinete` y comparando los rangos
@@ -150,3 +150,23 @@ Los nombres de modelos, campos, la lógica de las rutas y los comentarios
 están escritos en español en todo el proyecto (siguiendo el documento de
 especificación y el dominio de la clínica). Mantén esta convención para
 código nuevo en este proyecto en vez de cambiar a identificadores en inglés.
+
+## Herramientas MCP opcionales (entorno local de desarrollo)
+
+Este apartado documenta configuración **local y por desarrollador** de
+Claude Code, no del proyecto en sí — no se guarda ninguna clave en el repo.
+
+Para habilitar el servidor MCP de Perplexity (búsqueda web/investigación
+durante el desarrollo) en tu propio Claude Code:
+
+```bash
+claude mcp add perplexity --scope user --env PERPLEXITY_API_KEY=<tu_clave_real> -- npx -y @perplexity-ai/mcp-server
+```
+
+- `--scope user` lo registra en tu configuración global de Claude Code (no
+  en este repositorio), así que persiste entre proyectos y sesiones locales.
+- Sustituye `<tu_clave_real>` por tu propia API key de Perplexity
+  (https://www.perplexity.ai/settings/api) — nunca la commitees ni la
+  pegues en este fichero.
+- En una sesión remota/efímera de Claude Code on the web este comando no
+  persiste: hay que ejecutarlo en tu máquina local.
