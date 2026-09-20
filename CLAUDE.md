@@ -150,3 +150,23 @@ Los nombres de modelos, campos, la lógica de las rutas y los comentarios
 están escritos en español en todo el proyecto (siguiendo el documento de
 especificación y el dominio de la clínica). Mantén esta convención para
 código nuevo en este proyecto en vez de cambiar a identificadores en inglés.
+
+## Herramientas MCP opcionales (entorno local de desarrollo)
+
+Este apartado documenta configuración **local y por desarrollador** de
+Claude Code, no del proyecto en sí — no se guarda ninguna clave en el repo.
+
+Para habilitar el servidor MCP de Perplexity (búsqueda web/investigación
+durante el desarrollo) en tu propio Claude Code:
+
+```bash
+claude mcp add perplexity --scope user --env PERPLEXITY_API_KEY=<tu_clave_real> -- npx -y @perplexity-ai/mcp-server
+```
+
+- `--scope user` lo registra en tu configuración global de Claude Code (no
+  en este repositorio), así que persiste entre proyectos y sesiones locales.
+- Sustituye `<tu_clave_real>` por tu propia API key de Perplexity
+  (https://www.perplexity.ai/settings/api) — nunca la commitees ni la
+  pegues en este fichero.
+- En una sesión remota/efímera de Claude Code on the web este comando no
+  persiste: hay que ejecutarlo en tu máquina local.
