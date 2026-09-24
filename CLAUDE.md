@@ -170,3 +170,26 @@ claude mcp add perplexity --scope user --env PERPLEXITY_API_KEY=<tu_clave_real> 
   pegues en este fichero.
 - En una sesión remota/efímera de Claude Code on the web este comando no
   persiste: hay que ejecutarlo en tu máquina local.
+
+### Plugin opcional "ponytail" (código mínimo, YAGNI)
+
+[ponytail](https://github.com/DietrichGebert/ponytail) es un plugin de
+Claude Code que antepone una escalera YAGNI (¿hace falta? → ¿ya existe en el
+repo? → ¿lo da el stdlib/la plataforma/una dependencia instalada? → una
+línea → solo entonces el mínimo necesario) antes de escribir código nuevo,
+sin recortar nunca validación, manejo de errores, seguridad ni
+accesibilidad. Es coherente con la filosofía de "núcleo vertical" de este
+proyecto (arriba): stack completo de auth/RBAC/auditoría, pero sin
+sobreconstruir alrededor.
+
+Es configuración **local y por desarrollador**, igual que el MCP de
+Perplejidad — no se instala ni se commitea nada en este repo:
+
+```bash
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+(Son dos prompts distintos; hace falta `node` en el PATH para los hooks de
+activación). Actívalo en tu propio Claude Code si quieres ese estilo más
+austero al trabajar en este proyecto; no es un requisito del repositorio.
