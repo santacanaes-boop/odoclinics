@@ -4,20 +4,11 @@ Este archivo proporciona guía a Claude Code (claude.ai/code) para trabajar con 
 
 ## Estructura del repositorio (leer esto primero)
 
-Este repositorio distribuye actualmente su código fuente como un archivo zip,
-no como ficheros trackeados: `odoclinics-app-fase1 (1).zip`, que al
-descomprimirse genera `odoclinics-app-fase1/odoclinics-app/` — ese directorio
-interior es la raíz real del proyecto Next.js (`package.json`, `prisma/`,
-`src/`, etc.). Si ese directorio no existe en disco, descomprime el archivo
-primero:
-
-```bash
-unzip "odoclinics-app-fase1 (1).zip" -d odoclinics-app-fase1
-cd odoclinics-app-fase1/odoclinics-app
-```
-
-Todos los comandos de abajo asumen que estás dentro de esa raíz del proyecto
-(`odoclinics-app-fase1/odoclinics-app/`), no en la raíz del repositorio.
+La raíz del repositorio es la raíz del proyecto Next.js (`package.json`,
+`prisma/`, `src/`, etc.). Hasta la Fase 6 el código se distribuía como un
+zip (`odoclinics-app-fase1 (1).zip`); ya no — el código está trackeado
+directamente en git y todos los comandos de abajo se ejecutan desde la raíz
+del repositorio.
 
 El proyecto también incluye `ODOCLINICS_ESPECIFICACION_TECNICA.md`, la
 especificación completa de producto/técnica (en español) a partir de la cual
