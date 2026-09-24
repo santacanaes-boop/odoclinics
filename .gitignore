@@ -1,0 +1,4 @@
+# El código fuente real vive en el zip (ver CLAUDE.md); esta carpeta la
+# genera el hook de SessionStart (.claude/hooks/session-start.sh) o el
+# unzip manual descrito en CLAUDE.md — no se trackea.
+odoclinics-app-fase1/
