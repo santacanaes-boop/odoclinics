@@ -102,9 +102,11 @@ necesitan.
   (`bloqueadoHasta` en `Usuario`).
 - El `maxAge` de sesión es de 15 minutos — deliberado, porque la app se usa
   en una tablet compartida en consulta, no un error.
-- MFA real (TOTP) implementado desde la Fase 6 (`src/lib/mfa.ts`, página
-  `/mfa`) — no se fuerza automáticamente para todos los roles, cada usuario
-  lo activa desde su cuenta. Ver el README del scaffold para el detalle.
+- MFA real (TOTP, `src/lib/mfa.ts`, página `/mfa`) **obligatorio para
+  todos**: la sesión lleva `mfaEnabled`; sin él, `src/proxy.ts` redirige
+  todo a `/mfa` (las APIs dan 403) y `requierePermiso()` deniega con
+  `MFA_PENDIENTE`. Tras activarlo o reiniciarlo se cierra la sesión para
+  emitir una nueva. Móvil perdido: `npm run mfa:reiniciar -- <email>`.
 
 ### Modelo de datos (`prisma/schema.prisma`)
 

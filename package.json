@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "mfa:reiniciar": "tsx --env-file=.env prisma/reiniciarMfa.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

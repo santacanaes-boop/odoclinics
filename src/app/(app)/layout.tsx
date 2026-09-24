@@ -16,7 +16,9 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar permisos={session.user?.permisos ?? {}} />
+      {/* Sin MFA configurado no hay módulos a los que ir: el menú se vacía
+          y el proxy lleva a /mfa (MFA obligatorio, sección 7). */}
+      <Sidebar permisos={session.user.mfaEnabled ? session.user.permisos : {}} />
       <main className="flex-1 p-6 lg:p-10 pt-16 lg:pt-10">{children}</main>
     </div>
   );

@@ -62,10 +62,10 @@ export const authOptions: AuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Contraseña", type: "password" },
-        // Segundo factor (sección 7: MFA). Solo se exige cuando el usuario
-        // ya lo tiene activado (Usuario.mfaEnabled) — ver /mfa para
-        // activarlo. Queda pendiente hacerlo obligatorio para TODO rol con
-        // acceso a historiales antes de manejar pacientes reales.
+        // Segundo factor (sección 7: MFA obligatorio). Quien aún no lo tiene
+        // configurado entra solo con contraseña, pero con la sesión marcada
+        // mfaEnabled=false: src/proxy.ts le lleva a /mfa y requierePermiso()
+        // le niega cualquier dato hasta que lo active.
         otp: { label: "Código de verificación", type: "text" },
       },
       async authorize(credentials, req) {
@@ -127,6 +127,7 @@ export const authOptions: AuthOptions = {
           id: usuario.id,
           name: usuario.nombre,
           email: usuario.email,
+          mfaEnabled: usuario.mfaEnabled,
           rolId: usuario.rolId,
           rolNombre: usuario.rol.nombre,
           permisos: usuario.rol.permisos as PermisosRol,
@@ -137,6 +138,7 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.mfaEnabled = user.mfaEnabled;
         token.rolId = user.rolId;
         token.rolNombre = user.rolNombre;
         token.permisos = user.permisos;
@@ -146,6 +148,7 @@ export const authOptions: AuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? "";
+        session.user.mfaEnabled = token.mfaEnabled ?? false;
         session.user.rolId = token.rolId ?? "";
         session.user.rolNombre = token.rolNombre ?? "";
         session.user.permisos = token.permisos ?? {};

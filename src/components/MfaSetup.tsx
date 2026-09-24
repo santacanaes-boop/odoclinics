@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
-// Activación de MFA (sección 7). Flujo: generar secreto + QR → escanear con
-// una app de autenticación (Google Authenticator, Authy...) → confirmar con
-// un código para activar de verdad.
+// Activación de MFA (sección 7, obligatorio para todos). Flujo: generar
+// secreto + QR → escanear con una app de autenticación (Google
+// Authenticator, Authy...) → confirmar con un código → cerrar sesión y
+// volver a entrar ya con el código, que confirma que funciona y renueva la
+// sesión (la anterior se emitió sin MFA y no da acceso a nada).
 export default function MfaSetup() {
-  const router = useRouter();
   const [qr, setQr] = useState<string | null>(null);
   const [secreto, setSecreto] = useState<string | null>(null);
   const [codigo, setCodigo] = useState("");
@@ -42,17 +43,18 @@ export default function MfaSetup() {
       setError("Código incorrecto. Revisa la hora de tu móvil y vuelve a intentarlo.");
       return;
     }
-    router.refresh();
+    await signOut({ callbackUrl: "/login?mfa=activado" });
   }
 
   if (!qr) {
     return (
       <div>
         <p className="text-sm text-purple-600 mb-4">
-          La verificación en dos pasos añade una capa extra de seguridad: además de tu
-          contraseña, necesitarás un código de 6 dígitos generado por una app de
-          autenticación (Google Authenticator, Authy, 1Password...) cada vez que inicies
-          sesión.
+          Para proteger los datos de los pacientes, la verificación en dos pasos es
+          obligatoria. Además de tu contraseña, necesitarás un código de 6 dígitos
+          generado por una app de autenticación (Google Authenticator, Authy,
+          1Password...) cada vez que inicies sesión. Hasta que la configures no podrás
+          acceder al resto de la aplicación.
         </p>
         <button
           type="button"
@@ -60,7 +62,7 @@ export default function MfaSetup() {
           disabled={cargando}
           className="rounded-lg bg-purple-700 text-white px-4 py-2 text-sm font-medium disabled:opacity-60"
         >
-          {cargando ? "Generando…" : "Activar verificación en dos pasos"}
+          {cargando ? "Generando…" : "Configurar verificación en dos pasos"}
         </button>
         {error && <p className="text-sm text-danger mt-3">{error}</p>}
       </div>

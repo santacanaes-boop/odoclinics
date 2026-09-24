@@ -61,7 +61,7 @@ async function main() {
 
   console.log("Seed completado: rol Administrador + 2 usuarios iniciales.");
   console.log(
-    "IMPORTANTE: cambia las contraseñas iniciales y activa MFA antes de usar en producción."
+    "IMPORTANTE: cambia las contraseñas iniciales. En el primer inicio de sesión la app obligará a configurar el MFA."
   );
 }
 

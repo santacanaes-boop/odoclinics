@@ -38,6 +38,12 @@ export async function requierePermiso(
     return { autorizado: false as const, motivo: "NO_AUTENTICADO" as const, session: null };
   }
 
+  // MFA obligatorio (sección 7): sin segundo factor configurado no se
+  // accede a ningún módulo, tenga el rol los permisos que tenga.
+  if (!session.user.mfaEnabled) {
+    return { autorizado: false as const, motivo: "MFA_PENDIENTE" as const, session };
+  }
+
   const permisos = session.user.permisos;
   const nivel = permisos?.[modulo] ?? "ninguno";
 

@@ -1,11 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
+// Aviso tras configurar o reiniciar el MFA desde /mfa, que cierra la sesión
+// y trae aquí con ?mfa=... (MFA obligatorio, sección 7).
+const AVISOS_MFA: Record<string, string> = {
+  activado:
+    "Verificación en dos pasos activada. Vuelve a entrar: te pediremos el código de tu app.",
+  reconfigurar:
+    "Verificación en dos pasos reiniciada. Al entrar tendrás que configurarla de nuevo con tu móvil.",
+};
+
+// useSearchParams() necesita un límite de Suspense para poder generar la
+// página en el build.
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <FormularioLogin />
+    </Suspense>
+  );
+}
+
+function FormularioLogin() {
   const router = useRouter();
+  const aviso = AVISOS_MFA[useSearchParams().get("mfa") ?? ""];
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -64,6 +84,12 @@ export default function LoginPage() {
         <p className="text-sm text-purple-600 mb-6">
           {pidiendoOtp ? "Introduce el código de verificación" : "Inicia sesión para continuar"}
         </p>
+
+        {aviso && !pidiendoOtp && (
+          <p role="status" className="mb-4 rounded-lg bg-mint/15 border border-mint/40 px-3 py-2 text-sm text-purple-800">
+            {aviso}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!pidiendoOtp ? (

@@ -36,10 +36,12 @@ principio a fin.
 - **MFA real** (`/mfa`, `src/lib/mfa.ts`, `src/components/MfaSetup.tsx` +
   `MfaDesactivar.tsx`): TOTP de verdad con `otplib` — QR para escanear con
   Google Authenticator/Authy, confirmación con código, y segundo paso
-  obligatorio en el login (`src/app/login/page.tsx`) para cualquier cuenta
-  que lo active. No es obligatorio automáticamente para todos los roles
-  (eso exigiría bloquear el acceso hasta configurarlo) — el dashboard
-  muestra un aviso hasta que se activa.
+  obligatorio en el login (`src/app/login/page.tsx`). **Obligatorio para
+  todos los usuarios**: quien no lo tiene configurado solo puede entrar en
+  `/mfa` hasta hacerlo (el proxy redirige el resto y las APIs responden
+  403). Si alguien pierde el móvil, un administrador lo reinicia con
+  `npm run mfa:reiniciar -- <email>` y al entrar tendrá que configurarlo
+  de nuevo.
 - **RBAC en servidor** (`src/lib/rbac.ts`): cada API route llama a
   `requierePermiso()` antes de tocar datos. No hay ninguna ruta que confíe en
   que el frontend oculte un botón.
@@ -226,7 +228,8 @@ Abre `http://localhost:3000` → redirige a `/login`.
 
 Las contraseñas iniciales del seed son de un solo uso simbólico
 (`cambiar-en-primer-login` si no defines `SEED_PASSWORD_*` en `.env`) —
-cámbialas antes de cualquier uso real, y activa MFA desde `/mfa` (Fase 6).
+cámbialas antes de cualquier uso real. En el primer inicio de sesión la app
+obliga a configurar el MFA.
 
 ## Antes de manejar pacientes reales
 
@@ -234,7 +237,8 @@ Revisa el checklist completo de la sección 7 del documento de
 especificación — ahora también marcable en `/proteccion-datos`. Como
 mínimo, no despliegues con datos reales sin:
 
-- [x] MFA disponible — actívalo desde `/mfa` para cada usuario (Fase 6)
+- [x] MFA obligatorio para todos los usuarios (sin él no se accede a
+      ningún dato)
 - [x] Cifrado de campo real en los campos marcados `// CIFRAR` — necesita
       `CIFRADO_KEY` en `.env` (Fase 6)
 - [x] Rate limiting básico frente a fuerza bruta (Fase 6, necesita Redis en

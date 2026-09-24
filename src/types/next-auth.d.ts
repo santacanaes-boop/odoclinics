@@ -8,6 +8,7 @@ export type PermisosRol = Partial<Record<Modulo, NivelPermiso>>;
 
 declare module "next-auth" {
   interface User {
+    mfaEnabled: boolean;
     rolId: string;
     rolNombre: string;
     permisos: PermisosRol;
@@ -16,6 +17,7 @@ declare module "next-auth" {
   interface Session {
     user: DefaultSession["user"] & {
       id: string;
+      mfaEnabled: boolean;
       rolId: string;
       rolNombre: string;
       permisos: PermisosRol;
@@ -25,6 +27,7 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
+    mfaEnabled?: boolean;
     rolId?: string;
     rolNombre?: string;
     permisos?: PermisosRol;
