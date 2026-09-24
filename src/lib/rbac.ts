@@ -44,15 +44,28 @@ export async function requierePermiso(
     return { autorizado: false as const, motivo: "MFA_PENDIENTE" as const, session };
   }
 
-  const permisos = session.user.permisos;
-  const nivel = permisos?.[modulo] ?? "ninguno";
-
-  const orden: Record<NivelPermiso, number> = { ninguno: 0, lectura: 1, total: 2 };
-  const autorizado = orden[nivel] >= orden[nivelMinimo];
+  const autorizado = tieneAcceso(session.user.permisos, modulo, nivelMinimo);
 
   return {
     autorizado,
     motivo: autorizado ? null : ("PERMISO_INSUFICIENTE" as const),
     session,
   };
+}
+
+const ORDEN_NIVEL: Record<NivelPermiso, number> = { ninguno: 0, lectura: 1, total: 2 };
+
+/**
+ * ¿Alcanzan estos permisos el nivel pedido en el módulo? Para decidir qué
+ * bloques mostrar dentro de una página ya autorizada (p.ej. Inicio solo
+ * enseña el stock bajo a quien tiene acceso a Stock). Un nivel desconocido
+ * en la BD cuenta como "ninguno" (falla cerrado).
+ */
+export function tieneAcceso(
+  permisos: Partial<Record<Modulo, NivelPermiso>> | undefined,
+  modulo: Modulo,
+  nivelMinimo: NivelPermiso = "lectura"
+): boolean {
+  const nivel = permisos?.[modulo] ?? "ninguno";
+  return (ORDEN_NIVEL[nivel] ?? 0) >= ORDEN_NIVEL[nivelMinimo];
 }

@@ -115,24 +115,36 @@ export default async function SeguimientoPage() {
     (f) => ahora.getTime() - f.fecha.getTime() > QUINCE_DIAS_MS
   );
 
+  // Un aviso por paciente y tipo, no uno por factura/presupuesto: con varias
+  // facturas pendientes, la misma paciente salía repetida y recepción
+  // acababa escribiéndole varias veces. Se suma el importe y se ordena de
+  // mayor a menor, para llamar primero a quien más dinero tiene pendiente.
+  const deudas = agruparPorPaciente(facturasAtrasadas.map((f) => ({ paciente: f.paciente, importe: Number(f.importe) })));
+  const presupuestos = agruparPorPaciente(
+    presupuestosSinAgendar.map((pr) => ({ paciente: pr.paciente, importe: Number(pr.importeTotal) }))
+  );
+
   const recomendaciones = [
+    ...deudas.map((d) => ({
+      id: `pago-${d.paciente.id}`,
+      tipo: "Pago pendiente",
+      paciente: d.paciente,
+      detalle: `${d.total} factura${d.total === 1 ? "" : "s"} · ${fmtEuros(d.importe)}`,
+      mensaje: `Hola ${d.paciente.nombre}, tienes un pago pendiente de ${fmtEuros(d.importe)} en Odoclinics.`,
+    })),
+    ...presupuestos.map((pr) => ({
+      id: `presupuesto-${pr.paciente.id}`,
+      tipo: "Presupuesto sin agendar",
+      paciente: pr.paciente,
+      detalle: `${pr.total} presupuesto${pr.total === 1 ? "" : "s"} · ${fmtEuros(pr.importe)}`,
+      mensaje: `Hola ${pr.paciente.nombre}, vimos que tienes un presupuesto pendiente de agendar en Odoclinics. ¿Te ayudamos a encontrar hueco?`,
+    })),
     ...revisionesPendientes.map((p) => ({
       id: `revision-${p.id}`,
       tipo: "Revisión pendiente",
       paciente: p,
+      detalle: null as string | null,
       mensaje: `Hola ${p.nombre}, ha pasado tiempo desde tu última visita a Odoclinics. ¿Reservamos tu revisión?`,
-    })),
-    ...presupuestosSinAgendar.map((pr) => ({
-      id: `presupuesto-${pr.id}`,
-      tipo: "Presupuesto sin agendar",
-      paciente: pr.paciente,
-      mensaje: `Hola ${pr.paciente.nombre}, vimos que tienes un presupuesto pendiente de agendar en Odoclinics. ¿Te ayudamos a encontrar hueco?`,
-    })),
-    ...facturasAtrasadas.map((f) => ({
-      id: `factura-${f.id}`,
-      tipo: "Pago pendiente",
-      paciente: f.paciente,
-      mensaje: `Hola ${f.paciente.nombre}, tienes un pago pendiente de ${Number(f.importe).toFixed(2)} € en Odoclinics.`,
     })),
   ];
 
@@ -196,6 +208,9 @@ export default async function SeguimientoPage() {
                   <p className="text-sm">
                     {r.paciente.apellidos}, {r.paciente.nombre}
                   </p>
+                  {r.detalle && (
+                    <p className="text-xs font-mono text-purple-600 mt-0.5">{r.detalle}</p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <a
@@ -222,4 +237,27 @@ export default async function SeguimientoPage() {
       </section>
     </div>
   );
+}
+
+type PacienteContacto = {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  telefono: string;
+  email: string | null;
+};
+
+function agruparPorPaciente(items: { paciente: PacienteContacto; importe: number }[]) {
+  const grupos = new Map<string, { paciente: PacienteContacto; importe: number; total: number }>();
+  for (const { paciente, importe } of items) {
+    const g = grupos.get(paciente.id) ?? { paciente, importe: 0, total: 0 };
+    g.importe += importe;
+    g.total += 1;
+    grupos.set(paciente.id, g);
+  }
+  return [...grupos.values()].sort((a, b) => b.importe - a.importe);
+}
+
+function fmtEuros(v: number) {
+  return v.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 }
