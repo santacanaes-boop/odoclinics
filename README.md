@@ -118,6 +118,22 @@ principio a fin.
   marketing se muestran como **pendientes explícitos**
   (`src/components/PanelPendiente.tsx`) — requieren Meta Business API,
   Google Business Profile API y un proveedor de email marketing reales.
+- **Informes** (`/informes`, sección 4.7; `src/lib/informes.ts`): KPIs
+  del mes calculados en tiempo real — facturado, cobrado, producción
+  (tratamientos realizados), valor medio por paciente, nuevos pacientes,
+  ocupación de agenda, aceptación de presupuestos (en número y en
+  importe) y tasa de no-show — comparados con el mes anterior. Si el mes
+  está en curso, se compara solo hasta hoy contra los mismos días del mes
+  anterior, para no mostrar caídas falsas. Incluye ocupación y producción
+  de las últimas 8 semanas, los tratamientos que más producen y el
+  importe total en presupuestos pendientes de respuesta. La ocupación
+  necesita `HORAS_GABINETE_SEMANA` en `.env`; sin ella se muestra
+  "falta configurar" en vez de calcularse contra un horario inventado.
+  Es la primera página que comprueba `requierePermiso("informes")` en el
+  propio servidor y audita la consulta (`VER_INFORMES`). Exportación
+  PDF/Excel, comparativas interanuales y desglose por profesional quedan
+  pendientes (el desglose necesita `profesionalId` en
+  `HistorialTratamiento`).
 - **Laboratorio protésico** (`/laboratorio`, sección 4.4): encargos
   vinculados al paciente y al laboratorio, KPIs reales (en curso, listos
   para colocar, coste del mes), y "con retraso" **calculado** (no
@@ -183,7 +199,7 @@ Todo lo marcado `// TODO Fase N` en el código, y en general:
   en la UE con HTTPS/TLS real → ver "Qué NO se ha hecho en Fase 6"
 
 No se han creado páginas vacías para los módulos que siguen sin lógica real
-(Informes, Roles, Integraciones) para evitar el efecto "12 pantallas a
+(Roles, Integraciones) para evitar el efecto "12 pantallas a
 medias" — mejor añadirlas cuando tengan lógica real detrás.
 
 ## Arrancar en local

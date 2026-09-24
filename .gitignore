@@ -8,3 +8,7 @@ node_modules
 # datos de pacientes en el repositorio; en producción van a almacenamiento
 # S3-compatible cifrado (ver src/lib/storage.ts).
 public/uploads/
+
+# Artefactos locales de build/TypeScript
+next-env.d.ts
+*.tsbuildinfo

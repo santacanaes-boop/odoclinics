@@ -16,7 +16,7 @@ const MODULOS = [
   { href: "/laboratorio", label: "Laboratorio", icon: "🧪", disponible: true },
   { href: "/contabilidad", label: "Contabilidad", icon: "💶", disponible: true },
   { href: "/stock", label: "Stock y compras", icon: "📦", disponible: true },
-  { href: "/informes", label: "Informes", icon: "📊", disponible: false },
+  { href: "/informes", label: "Informes", icon: "📊", disponible: true },
   { href: "/marketing", label: "Marketing", icon: "📣", disponible: true },
   { href: "/seguimiento", label: "Seguimiento", icon: "💬", disponible: true },
   { href: "/proteccion-datos", label: "Protección de datos", icon: "🛡️", disponible: true },
