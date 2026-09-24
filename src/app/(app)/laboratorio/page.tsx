@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import { startOfMonth, endOfMonth } from "date-fns";
 import EncargoForm from "@/components/EncargoForm";
 import EncargosLista from "@/components/EncargosLista";
@@ -7,6 +9,9 @@ import EncargosLista from "@/components/EncargosLista";
 // paciente. KPIs reales desde BD, "con retraso" calculado (no persistido)
 // comparando fechaEntregaEstimada con la fecha actual.
 export default async function LaboratorioPage() {
+  const { autorizado } = await requierePermiso("laboratorio", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Laboratorio" />;
+
   const ahora = new Date();
   const inicioMes = startOfMonth(ahora);
   const finMes = endOfMonth(ahora);

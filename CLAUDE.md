@@ -73,7 +73,15 @@ if (!autorizado) return NextResponse.json({ error: "No autorizado" }, { status: 
   numéricamente — el JSON `Rol.permisos` de cada rol mapea módulo → nivel.
 - `src/middleware.ts` y el layout de servidor `(app)/layout.tsx` solo
   imponen "sesión válida" como primera barrera (redirigen a `/login`); **no**
-  hacen autorización por módulo — eso siempre vive en la ruta de API.
+  hacen autorización por módulo.
+- Las páginas de servidor de `src/app/(app)/**` que consultan Prisma
+  directamente (sin pasar por una API) también llaman a
+  `requierePermiso(modulo, "lectura")` al principio y, si no está
+  autorizado, devuelven `<SinPermiso titulo="…" />`
+  (`src/components/SinPermiso.tsx`). Toda página nueva con datos debe
+  hacerlo — si no, un rol limitado podría ver el módulo entrando por URL.
+- El `Sidebar` recibe los permisos desde el layout y oculta los módulos
+  con nivel `"ninguno"`; es solo cosmético, la barrera real es lo anterior.
 
 ### Auditoría
 

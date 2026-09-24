@@ -3,28 +3,35 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import type { Modulo, NivelPermiso } from "@/lib/rbac";
 
 // 12 módulos — sección 4. Icono SIEMPRE acompañado de texto (nunca solo
 // icono) por legibilidad en tablet, tal como fija la sección 2.
 // `disponible: false` = todavía no tiene página real (ver README "Qué
 // falta a propósito"); se muestra sin enlace para no llevar a un 404, con
 // el mismo patrón "· próximamente" que ya usa la ficha de paciente.
-const MODULOS = [
-  { href: "/dashboard", label: "Inicio", icon: "🏠", disponible: true },
-  { href: "/agenda", label: "Agenda", icon: "📅", disponible: true },
-  { href: "/pacientes", label: "Pacientes", icon: "🧑‍⚕️", disponible: true },
-  { href: "/laboratorio", label: "Laboratorio", icon: "🧪", disponible: true },
-  { href: "/contabilidad", label: "Contabilidad", icon: "💶", disponible: true },
-  { href: "/stock", label: "Stock y compras", icon: "📦", disponible: true },
-  { href: "/informes", label: "Informes", icon: "📊", disponible: true },
-  { href: "/marketing", label: "Marketing", icon: "📣", disponible: true },
-  { href: "/seguimiento", label: "Seguimiento", icon: "💬", disponible: true },
-  { href: "/proteccion-datos", label: "Protección de datos", icon: "🛡️", disponible: true },
-  { href: "/roles", label: "Roles y permisos", icon: "🔑", disponible: false },
-  { href: "/integraciones", label: "Integraciones", icon: "🔌", disponible: false },
+const MODULOS: { href: string; modulo: Modulo; label: string; icon: string; disponible: boolean }[] = [
+  { href: "/dashboard", modulo: "inicio", label: "Inicio", icon: "🏠", disponible: true },
+  { href: "/agenda", modulo: "agenda", label: "Agenda", icon: "📅", disponible: true },
+  { href: "/pacientes", modulo: "pacientes", label: "Pacientes", icon: "🧑‍⚕️", disponible: true },
+  { href: "/laboratorio", modulo: "laboratorio", label: "Laboratorio", icon: "🧪", disponible: true },
+  { href: "/contabilidad", modulo: "contabilidad", label: "Contabilidad", icon: "💶", disponible: true },
+  { href: "/stock", modulo: "stock", label: "Stock y compras", icon: "📦", disponible: true },
+  { href: "/informes", modulo: "informes", label: "Informes", icon: "📊", disponible: true },
+  { href: "/marketing", modulo: "marketing", label: "Marketing", icon: "📣", disponible: true },
+  { href: "/seguimiento", modulo: "seguimiento", label: "Seguimiento", icon: "💬", disponible: true },
+  { href: "/proteccion-datos", modulo: "proteccion_datos", label: "Protección de datos", icon: "🛡️", disponible: true },
+  { href: "/roles", modulo: "roles", label: "Roles y permisos", icon: "🔑", disponible: false },
+  { href: "/integraciones", modulo: "integraciones", label: "Integraciones", icon: "🔌", disponible: false },
 ];
 
-export default function Sidebar() {
+// Solo se listan los módulos a los que el rol del usuario tiene acceso. Es
+// cosmético: la barrera real es requierePermiso() en cada página y API.
+export default function Sidebar({
+  permisos,
+}: {
+  permisos: Partial<Record<Modulo, NivelPermiso>>;
+}) {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
 
@@ -53,7 +60,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 space-y-1">
-          {MODULOS.map((m) => {
+          {MODULOS.filter((m) => (permisos[m.modulo] ?? "ninguno") !== "ninguno").map((m) => {
             if (!m.disponible) {
               return (
                 <div

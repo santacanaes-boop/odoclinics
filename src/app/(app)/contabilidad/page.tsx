@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import { startOfMonth, endOfMonth } from "date-fns";
 import FacturaForm from "@/components/FacturaForm";
 import GastoForm from "@/components/GastoForm";
@@ -9,6 +11,9 @@ import PanelPendiente from "@/components/PanelPendiente";
 // cuenta bancaria e integración con programa contable no se simulan: se
 // muestran como pendientes hasta que exista la integración real (Fase 6).
 export default async function ContabilidadPage() {
+  const { autorizado } = await requierePermiso("contabilidad", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Contabilidad" />;
+
   const ahora = new Date();
   const inicioMes = startOfMonth(ahora);
   const finMes = endOfMonth(ahora);

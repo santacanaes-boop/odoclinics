@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import ProductoForm from "@/components/ProductoForm";
 import ProductosTabla from "@/components/ProductosTabla";
 import PedidoForm from "@/components/PedidoForm";
@@ -7,6 +9,9 @@ import PedidosLista from "@/components/PedidosLista";
 // Sección 4.6: inventario con alerta de stock bajo + pedidos a proveedores
 // en curso. Los datos son reales desde BD, no hardcoded.
 export default async function StockPage() {
+  const { autorizado } = await requierePermiso("stock", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Stock y compras" />;
+
   const [productos, proveedores, pedidos] = await Promise.all([
     prisma.producto.findMany({
       include: { proveedor: { select: { nombre: true } } },

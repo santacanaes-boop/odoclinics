@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import { startOfDay, endOfDay } from "date-fns";
 
 // Nota de diseño (sección 4.1): los datos financieros NO van aquí, viven en
 // Contabilidad. Este dashboard es operativo, no económico.
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const { autorizado, session } = await requierePermiso("inicio", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Inicio" />;
+
   const hoy = new Date();
   const inicio = startOfDay(hoy);
   const fin = endOfDay(hoy);

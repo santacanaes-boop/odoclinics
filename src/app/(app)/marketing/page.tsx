@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import ContenidoForm from "@/components/ContenidoForm";
 import ContenidosLista from "@/components/ContenidosLista";
 import PanelPendiente from "@/components/PanelPendiente";
@@ -8,6 +10,9 @@ import PanelPendiente from "@/components/PanelPendiente";
 // dependen de APIs externas (Meta Business, Google Business Profile) se
 // muestran como pendientes explícitos, nunca con cifras inventadas.
 export default async function MarketingPage() {
+  const { autorizado } = await requierePermiso("marketing", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Marketing y RRSS" />;
+
   const [contenidos, pacientesPorOrigen] = await Promise.all([
     prisma.contenidoMarketing.findMany({ orderBy: { fecha: "desc" } }),
     prisma.paciente.groupBy({

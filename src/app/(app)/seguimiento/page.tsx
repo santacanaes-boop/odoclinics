@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import { clasificarPaciente, COLUMNAS_SEGUIMIENTO } from "@/lib/seguimiento";
 import { enlaceWhatsApp, enlaceEmail } from "@/lib/contacto";
 import AutomatizacionesLista from "@/components/AutomatizacionesLista";
@@ -46,6 +48,9 @@ const TREINTA_DIAS_MS = 30 * 24 * 60 * 60 * 1000;
 const QUINCE_DIAS_MS = 15 * 24 * 60 * 60 * 1000;
 
 export default async function SeguimientoPage() {
+  const { autorizado } = await requierePermiso("seguimiento", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Seguimiento" />;
+
   // Idempotente y atómico: asegura que las 6 reglas de la sección 4.9.1
   // existan. createMany + skipDuplicates evita la condición de carrera que
   // seis `upsert` en paralelo (Promise.all) provocaban cuando dos peticiones

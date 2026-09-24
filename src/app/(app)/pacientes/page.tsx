@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import { registrarAuditoria } from "@/lib/audit";
+import SinPermiso from "@/components/SinPermiso";
 import { cifrarDeterminista } from "@/lib/cifrado";
 import { pareceDniNieCompleto } from "@/lib/dniNie";
 
@@ -8,6 +11,9 @@ export default async function PacientesPage({
 }: {
   searchParams: { q?: string };
 }) {
+  const { autorizado, session } = await requierePermiso("pacientes", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Pacientes" />;
+
   const q = searchParams.q?.trim();
 
   const pacientes = await prisma.paciente.findMany({
@@ -23,6 +29,16 @@ export default async function PacientesPage({
         }
       : undefined,
     orderBy: { apellidos: "asc" },
+  });
+
+  // LOPD-GDD (sección 7): el listado también expone datos de pacientes, así
+  // que se registra quién lo consulta (y qué buscó), no solo la ficha.
+  await registrarAuditoria({
+    usuarioId: (session!.user as any).id,
+    accion: "VER_LISTADO_PACIENTES",
+    entidad: "Paciente",
+    entidadId: "listado",
+    detalle: { busqueda: q ?? null, resultados: pacientes.length },
   });
 
   return (

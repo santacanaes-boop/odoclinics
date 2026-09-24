@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import ChecklistCumplimiento from "@/components/ChecklistCumplimiento";
 import EsterilizacionForm from "@/components/EsterilizacionForm";
 import PanelPendiente from "@/components/PanelPendiente";
@@ -36,6 +38,9 @@ const ITEMS_CIBERSEGURIDAD = [
 ];
 
 export default async function ProteccionDatosPage() {
+  const { autorizado } = await requierePermiso("proteccion_datos", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Protección de datos" />;
+
   // Idempotente: asegura que el checklist tenga sus ítems por defecto.
   await prisma.checklistItem.createMany({
     data: [

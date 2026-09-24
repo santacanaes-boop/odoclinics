@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requierePermiso } from "@/lib/rbac";
+import { registrarAuditoria } from "@/lib/audit";
+import SinPermiso from "@/components/SinPermiso";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -12,6 +15,9 @@ export default async function AgendaPage({
 }: {
   searchParams: { fecha?: string };
 }) {
+  const { autorizado, session } = await requierePermiso("agenda", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Agenda" />;
+
   const fecha = searchParams.fecha ? parseISO(searchParams.fecha) : new Date();
   const inicioDia = new Date(fecha);
   inicioDia.setHours(0, 0, 0, 0);
@@ -22,6 +28,15 @@ export default async function AgendaPage({
     where: { fechaHora: { gte: inicioDia, lte: finDia } },
     include: { paciente: { select: { nombre: true, apellidos: true } } },
     orderBy: { fechaHora: "asc" },
+  });
+
+  // LOPD-GDD (sección 7): la agenda muestra qué paciente viene y a qué
+  // tratamiento — se registra quién la consulta, por día.
+  await registrarAuditoria({
+    usuarioId: (session!.user as any).id,
+    accion: "VER_AGENDA",
+    entidad: "Cita",
+    entidadId: format(fecha, "yyyy-MM-dd"),
   });
 
   const gabinete1 = citas.filter((c) => c.gabinete === 1);

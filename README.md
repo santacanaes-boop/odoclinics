@@ -129,8 +129,7 @@ principio a fin.
   importe total en presupuestos pendientes de respuesta. La ocupación
   necesita `HORAS_GABINETE_SEMANA` en `.env`; sin ella se muestra
   "falta configurar" en vez de calcularse contra un horario inventado.
-  Es la primera página que comprueba `requierePermiso("informes")` en el
-  propio servidor y audita la consulta (`VER_INFORMES`). Exportación
+  Audita la consulta (`VER_INFORMES`). Exportación
   PDF/Excel, comparativas interanuales y desglose por profesional quedan
   pendientes (el desglose necesita `profesionalId` en
   `HistorialTratamiento`).
@@ -232,6 +231,9 @@ mínimo, no despliegues con datos reales sin:
       `CIFRADO_KEY` en `.env` (Fase 6)
 - [x] Rate limiting básico frente a fuerza bruta (Fase 6, necesita Redis en
       multi-instancia)
+- [x] Permisos por módulo comprobados en servidor también en las páginas
+      (no solo en las APIs), con auditoría del listado de pacientes y de
+      la agenda
 - [ ] Hosting en la UE
 - [ ] HTTPS/TLS en todo momento
 - [ ] Backups cifrados en ubicación distinta al servidor (marcable en

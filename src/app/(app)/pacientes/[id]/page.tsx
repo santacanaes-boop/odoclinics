@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requierePermiso } from "@/lib/rbac";
+import SinPermiso from "@/components/SinPermiso";
 import { registrarAuditoria } from "@/lib/audit";
 import { PIEZAS_FDI, type EstadoPieza } from "@/lib/odontograma";
 import Odontograma from "@/components/Odontograma";
@@ -32,7 +32,9 @@ export default async function FichaPacientePage({
 }: {
   params: { id: string };
 }) {
-  const session = await getServerSession(authOptions);
+  const { autorizado, session } = await requierePermiso("pacientes", "lectura");
+  if (!autorizado) return <SinPermiso titulo="Pacientes" />;
+
 
   const paciente = await prisma.paciente.findUnique({
     where: { id: params.id },
