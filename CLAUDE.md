@@ -30,7 +30,7 @@ npm run db:studio                    # GUI de Prisma Studio
 npm run dev                   # http://localhost:3000, redirige a /login
 npm run build
 npm run start
-npm run lint                  # next lint
+npm run lint                  # eslint . (eslint.config.mjs)
 ```
 
 Todavía no hay suite de tests configurada (no hay Jest/Vitest/Playwright) —
@@ -38,7 +38,7 @@ no inventes comandos de test.
 
 ## Arquitectura
 
-**Stack**: Next.js 14 (App Router) + TypeScript, NextAuth (proveedor de
+**Stack**: Next.js 16 (App Router) + React 19 + TypeScript, NextAuth (proveedor de
 credenciales), Prisma + PostgreSQL, Tailwind, Zod para validación de entrada.
 
 ### Filosofía de "núcleo vertical", no pantallas horizontales
@@ -71,7 +71,7 @@ if (!autorizado) return NextResponse.json({ error: "No autorizado" }, { status: 
   `seguimiento`, `proteccion_datos`, `roles`, `integraciones`, `inicio`).
 - `NivelPermiso` es `"ninguno" | "lectura" | "total"`, ordenado y comparado
   numéricamente — el JSON `Rol.permisos` de cada rol mapea módulo → nivel.
-- `src/middleware.ts` y el layout de servidor `(app)/layout.tsx` solo
+- `src/proxy.ts` (el antiguo `middleware.ts`, renombrado en Next.js 16) y el layout de servidor `(app)/layout.tsx` solo
   imponen "sesión válida" como primera barrera (redirigen a `/login`); **no**
   hacen autorización por módulo.
 - Las páginas de servidor de `src/app/(app)/**` que consultan Prisma
@@ -134,6 +134,18 @@ por legibilidad, no un descuido.
   la entrada con Zod, llama a `requierePermiso`, hace la operación de
   Prisma, y llama a `registrarAuditoria`.
 - Alias de rutas `@/*` → `src/*` (ver `tsconfig.json`).
+- Next.js 16: `params` y `searchParams` son `Promise` — en rutas se usa
+  `props: { params: Promise<{ id: string }> }` y `const params = await
+  props.params;`.
+- Lee el body con `await req.json().catch(() => null)` (y
+  `req.formData().catch(() => null)`) para que una entrada mal formada dé
+  400 y no 500. Nunca pases el body tal cual a Prisma: valida con un
+  esquema Zod `.strict()` con los campos permitidos.
+- La sesión está tipada (`src/types/next-auth.d.ts`): usa
+  `session.user.id` / `session.user.permisos`, sin `as any`.
+- Archivos subidos: siempre con `leerImagenSubida()` + `guardarArchivo()`
+  (`src/lib/storage.ts`, fuera de `public/`); se sirven solo por
+  `/api/archivos/[...ruta]`, con permiso y auditoría.
 
 ### Tokens de marca
 

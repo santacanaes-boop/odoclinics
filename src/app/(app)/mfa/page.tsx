@@ -10,7 +10,7 @@ import MfaDesactivar from "@/components/MfaDesactivar";
 export default async function MfaPage() {
   const session = await getServerSession(authOptions);
   const usuario = await prisma.usuario.findUnique({
-    where: { id: (session!.user as any).id },
+    where: { id: session!.user.id },
     select: { mfaEnabled: true },
   });
 

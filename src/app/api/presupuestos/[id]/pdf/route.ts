@@ -6,8 +6,9 @@ import { generarPdfPresupuesto } from "@/lib/presupuestoPdf";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("pacientes", "lectura");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -24,7 +25,7 @@ export async function GET(
   const pdf = await generarPdfPresupuesto(presupuesto, presupuesto.paciente);
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "DESCARGAR_PDF_PRESUPUESTO",
     entidad: "Paciente",
     entidadId: presupuesto.pacienteId,

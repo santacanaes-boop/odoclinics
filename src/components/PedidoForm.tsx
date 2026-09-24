@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type LineaForm = { productoId: string; cantidad: string; precioUnitario: string };
@@ -21,19 +21,16 @@ export default function PedidoForm({
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Si la lista de productos llega vacía en el primer render (o cambia)
-  // después de que este formulario ya se montó — p.ej. se acaba de dar de
-  // alta el primer producto en el bloque de arriba — el estado inicial de
-  // React no se recalcula solo. Sin esto, una línea puede quedarse con
-  // productoId vacío aunque el desplegable muestre un producto seleccionado.
-  useEffect(() => {
-    if (productos.length === 0) return;
-    setLineas((prev) =>
-      prev.map((l) =>
-        productos.some((p) => p.id === l.productoId) ? l : { ...l, productoId: productos[0].id }
-      )
-    );
-  }, [productos]);
+  // Si la lista de productos cambia después de montar el formulario (p.ej.
+  // se acaba de dar de alta el primer producto en el bloque de arriba), una
+  // línea puede tener un productoId que ya no está en la lista. En vez de
+  // corregir el estado en un efecto, se deriva el valor efectivo al pintar
+  // y al enviar: el desplegable y lo enviado siempre coinciden.
+  const lineasEfectivas = lineas.map((l) =>
+    productos.some((p) => p.id === l.productoId)
+      ? l
+      : { ...l, productoId: productos[0]?.id ?? "" }
+  );
 
   function actualizarLinea(i: number, campo: keyof LineaForm, valor: string) {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
@@ -51,7 +48,7 @@ export default function PedidoForm({
       body: JSON.stringify({
         proveedorNombre: proveedorNombre.trim(),
         fechaEntregaEstimada: fechaEntregaEstimada || undefined,
-        lineas: lineas.map((l) => ({
+        lineas: lineasEfectivas.map((l) => ({
           productoId: l.productoId,
           nombre: productos.find((p) => p.id === l.productoId)?.nombre ?? "",
           cantidad: Number(l.cantidad) || 0,
@@ -108,7 +105,7 @@ export default function PedidoForm({
       </div>
 
       <div className="space-y-2 mb-3">
-        {lineas.map((l, i) => (
+        {lineasEfectivas.map((l, i) => (
           <div key={i} className="flex gap-2">
             <select
               value={l.productoId}

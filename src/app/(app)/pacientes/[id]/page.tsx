@@ -28,10 +28,11 @@ const PESTAÑAS_ADMIN = [
 ];
 
 export default async function FichaPacientePage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const params = await paramsPromise;
   const { autorizado, session } = await requierePermiso("pacientes", "lectura");
   if (!autorizado) return <SinPermiso titulo="Pacientes" />;
 
@@ -66,7 +67,7 @@ export default async function FichaPacientePage({
 
   if (session?.user) {
     await registrarAuditoria({
-      usuarioId: (session.user as any).id,
+      usuarioId: session.user.id,
       accion: "VER_FICHA_PACIENTE",
       entidad: "Paciente",
       entidadId: paciente.id,

@@ -14,10 +14,11 @@ import {
 // del módulo en el propio servidor antes de consultar nada: son datos
 // económicos agregados de toda la clínica y no hay API intermedia.
 export default async function InformesPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { mes?: string };
+  searchParams: Promise<{ mes?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const { autorizado, session } = await requierePermiso("informes", "lectura");
   if (!autorizado) {
     return (
@@ -39,7 +40,7 @@ export default async function InformesPage({
   ]);
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "VER_INFORMES",
     entidad: "Informe",
     entidadId: format(mes, "yyyy-MM"),

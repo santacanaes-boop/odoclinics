@@ -82,7 +82,7 @@ export default function Radiografias({
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             required
             className="text-sm"
           />

@@ -13,7 +13,23 @@ export async function POST() {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const usuarioId = (session.user as any).id;
+  const usuarioId = session.user.id;
+
+  // Si el MFA ya está activo, no se puede generar otro secreto desde aquí:
+  // quien robase una sesión abierta podría sustituirlo por el suyo, dejar
+  // fuera al titular y quedarse con el segundo factor. Para cambiarlo hay
+  // que desactivarlo antes (lo que exige la contraseña).
+  const actual = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { mfaEnabled: true },
+  });
+  if (actual?.mfaEnabled) {
+    return NextResponse.json(
+      { error: "La verificación en dos pasos ya está activa" },
+      { status: 409 }
+    );
+  }
+
   const secreto = generarSecreto();
 
   // Se guarda ya (con mfaEnabled todavía en false) para que /confirmar pueda

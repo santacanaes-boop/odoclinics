@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requierePermiso } from "@/lib/rbac";
 import { registrarAuditoria } from "@/lib/audit";
 import SinPermiso from "@/components/SinPermiso";
-import { format, addDays, subDays, parseISO } from "date-fns";
+import { format, addDays, subDays, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 
 // Sección 4.2: "Solo 2 columnas: Gabinete 1 y Gabinete 2 — sin nombre de
@@ -11,14 +11,17 @@ import { es } from "date-fns/locale";
 // profesionales en el futuro (campo profesionalId en el modelo) sin tener
 // que rehacer esta vista.
 export default async function AgendaPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { fecha?: string };
+  searchParams: Promise<{ fecha?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const { autorizado, session } = await requierePermiso("agenda", "lectura");
   if (!autorizado) return <SinPermiso titulo="Agenda" />;
 
-  const fecha = searchParams.fecha ? parseISO(searchParams.fecha) : new Date();
+  // Una fecha mal escrita en la URL no debe romper la página: se usa hoy.
+  const fechaParam = searchParams.fecha ? parseISO(searchParams.fecha) : null;
+  const fecha = fechaParam && isValid(fechaParam) ? fechaParam : new Date();
   const inicioDia = new Date(fecha);
   inicioDia.setHours(0, 0, 0, 0);
   const finDia = new Date(fecha);
@@ -33,7 +36,7 @@ export default async function AgendaPage({
   // LOPD-GDD (sección 7): la agenda muestra qué paciente viene y a qué
   // tratamiento — se registra quién la consulta, por día.
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "VER_AGENDA",
     entidad: "Cita",
     entidadId: format(fecha, "yyyy-MM-dd"),
@@ -42,7 +45,6 @@ export default async function AgendaPage({
   const gabinete1 = citas.filter((c) => c.gabinete === 1);
   const gabinete2 = citas.filter((c) => c.gabinete === 2);
 
-  const fechaISO = format(fecha, "yyyy-MM-dd");
   const ayer = format(subDays(fecha, 1), "yyyy-MM-dd");
   const manana = format(addDays(fecha, 1), "yyyy-MM-dd");
 

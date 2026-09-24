@@ -11,20 +11,21 @@ const CompletadoInput = z.object({ completado: z.boolean() });
 // esto no lo comprueba automáticamente.
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("proteccion_datos", "total");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = CompletadoInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const usuarioId = (session!.user as any).id;
+  const usuarioId = session!.user.id;
 
   const item = await prisma.checklistItem.update({
     where: { id: params.id },

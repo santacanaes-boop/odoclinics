@@ -68,7 +68,7 @@ export default async function LaboratorioPage() {
 
       <div className="bg-white rounded-xl border border-purple-100 p-6">
         <h2 className="font-medium mb-3">Encargos</h2>
-        <EncargosLista encargos={encargos} />
+        <EncargosLista encargos={encargos} ahora={ahora.getTime()} />
       </div>
     </div>
   );

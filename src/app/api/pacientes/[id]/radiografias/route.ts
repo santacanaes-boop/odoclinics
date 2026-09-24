@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requierePermiso } from "@/lib/rbac";
 import { registrarAuditoria } from "@/lib/audit";
-import { guardarArchivo } from "@/lib/storage";
+import { guardarArchivo, leerImagenSubida } from "@/lib/storage";
 
 const TIPOS_RADIOGRAFIA = ["panoramica", "periapical", "bite-wing"] as const;
 const TipoInput = z.enum(TIPOS_RADIOGRAFIA);
@@ -13,27 +13,30 @@ const TipoInput = z.enum(TIPOS_RADIOGRAFIA);
 // por eso dispositivoOrigen se fija siempre a "manual" aquí.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("pacientes", "total");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const form = await req.formData();
+  const form = await req.formData().catch(() => null);
+  if (!form) {
+    return NextResponse.json({ error: "Formulario no válido" }, { status: 400 });
+  }
   const tipoParsed = TipoInput.safeParse(form.get("tipo"));
   const archivo = form.get("archivo");
 
   if (!tipoParsed.success) {
     return NextResponse.json({ error: "Tipo de radiografía no válido" }, { status: 400 });
   }
-  if (!(archivo instanceof File) || !archivo.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Sube una imagen válida" }, { status: 400 });
+  const imagen = await leerImagenSubida(archivo);
+  if ("error" in imagen) {
+    return NextResponse.json({ error: imagen.error }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await archivo.arrayBuffer());
-  const extension = archivo.type.split("/")[1] ?? "jpg";
-  const archivoUrl = await guardarArchivo(buffer, "radiografias", extension);
+  const archivoUrl = await guardarArchivo(imagen.buffer, "radiografias", imagen.extension);
 
   const radiografia = await prisma.radiografia.create({
     data: {
@@ -45,7 +48,7 @@ export async function POST(
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "SUBIR_RADIOGRAFIA",
     entidad: "Paciente",
     entidadId: params.id,

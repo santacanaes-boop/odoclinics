@@ -13,15 +13,16 @@ type Encargo = {
   laboratorio: { nombre: string };
 };
 
-const ETIQUETA_ESTADO: Record<string, string> = {
-  en_proceso: "En proceso",
-  listo_para_colocar: "Listo para colocar",
-  colocado: "Colocado",
-};
-
-export default function EncargosLista({ encargos }: { encargos: Encargo[] }) {
+// `ahora` llega del servidor: calcularlo aquí con Date.now() daría un valor
+// distinto en servidor y navegador (y un aviso de "retraso" que parpadea).
+export default function EncargosLista({
+  encargos,
+  ahora,
+}: {
+  encargos: Encargo[];
+  ahora: number;
+}) {
   const router = useRouter();
-  const ahora = Date.now();
 
   async function cambiarEstado(id: string, estado: "listo_para_colocar" | "colocado") {
     const res = await fetch(`/api/laboratorio/encargos/${id}`, {

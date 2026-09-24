@@ -20,7 +20,7 @@ export default async function DashboardPage() {
     }),
     prisma.consentimiento.count({ where: { estado: "pendiente" } }),
     prisma.usuario.findUnique({
-      where: { id: (session!.user as any).id },
+      where: { id: session!.user.id },
       select: { mfaEnabled: true },
     }),
   ]);

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "LISTAR_PACIENTES",
     entidad: "Paciente",
     entidadId: "*",
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = PacienteInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   const paciente = await prisma.paciente.create({ data: parsed.data });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "CREAR_PACIENTE",
     entidad: "Paciente",
     entidadId: paciente.id,

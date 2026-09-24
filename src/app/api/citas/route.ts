@@ -21,6 +21,9 @@ export async function GET(req: NextRequest) {
 
   const fechaParam = req.nextUrl.searchParams.get("fecha"); // YYYY-MM-DD
   const fecha = fechaParam ? new Date(fechaParam) : new Date();
+  if (Number.isNaN(fecha.getTime())) {
+    return NextResponse.json({ error: "Fecha no válida" }, { status: 400 });
+  }
   const inicioDia = new Date(fecha.setHours(0, 0, 0, 0));
   const finDia = new Date(fecha.setHours(23, 59, 59, 999));
 
@@ -31,7 +34,7 @@ export async function GET(req: NextRequest) {
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "VER_AGENDA",
     entidad: "Cita",
     entidadId: "*",
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = CitaInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "CREAR_CITA",
     entidad: "Cita",
     entidadId: cita.id,

@@ -121,7 +121,7 @@ export default function SimulacionIA({
   return (
     <div>
       <div className="mb-4 rounded-lg bg-purple-50 border border-purple-100 px-4 py-3 text-xs text-purple-600">
-        El "después" es una <strong>aproximación visual</strong> (ajuste de brillo/saturación
+        El “después” es una <strong>aproximación visual</strong> (ajuste de brillo/saturación
         de la foto), no una generación real con IA. Conectar un modelo de imagen real
         (Fase 6) requiere elegir proveedor y gestionar su API key en servidor.
       </div>
@@ -161,7 +161,7 @@ export default function SimulacionIA({
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             disabled={!soportado}
             onChange={generarAproximacion}
             className="text-sm"

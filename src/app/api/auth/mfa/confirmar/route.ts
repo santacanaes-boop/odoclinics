@@ -14,13 +14,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = CodigoInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Código no válido" }, { status: 400 });
   }
 
-  const usuarioId = (session.user as any).id;
+  const usuarioId = session.user.id;
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
 
   if (!usuario?.mfaSecret || !verificarCodigo(usuario.mfaSecret, parsed.data.codigo)) {

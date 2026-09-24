@@ -71,7 +71,11 @@ principio a fin.
   marcada `// TODO Fase 5` (requiere esa integración externa).
 - **Radiografías** (`src/components/Radiografias.tsx`,
   `src/app/api/pacientes/[id]/radiografias/route.ts`): subida manual real de
-  imágenes a almacenamiento local (`src/lib/storage.ts`); la recepción
+  imágenes a almacenamiento local (`src/lib/storage.ts`, carpeta
+  `almacenamiento/` fuera de `public/`). Solo se aceptan PNG, JPG o WebP
+  de hasta 15 MB, comprobando el formato real por sus primeros bytes, y
+  los archivos se sirven únicamente por `/api/archivos/...` con permiso de
+  Pacientes y auditoría (`VER_ARCHIVO_CLINICO`); la recepción
   automática desde el sensor de rayos X queda `// TODO Fase 5`.
 - **Consentimientos** (`src/components/Consentimientos.tsx` +
   `FirmaCanvas.tsx`, `src/app/api/consentimientos/[id]/firmar/route.ts`):
@@ -157,14 +161,18 @@ principio a fin.
   autoclave + control biológico). El pentest se deja como pendiente
   explícito: no se puede sustituir por un checklist interno.
 
+## Actualización de seguridad (tras la Fase 6)
+
+- Next.js 14 → 16 y React 18 → 19 (`params`/`searchParams` asíncronos,
+  `src/middleware.ts` → `src/proxy.ts`, ESLint con configuración plana
+  en `eslint.config.mjs`).
+- Los archivos subidos pasan de `public/uploads/` (se servían como
+  estáticos) a `almacenamiento/`. **Si tienes archivos de pruebas en
+  `public/uploads/`, muévelos a `almacenamiento/`**; sus URLs antiguas en
+  BD (`/uploads/...`) deben pasar a `/api/archivos/...`.
+
 ## Qué NO se ha hecho en Fase 6 (y por qué)
 
-- **Migración de Next.js 14 → 16**: `npm install` marca una vulnerabilidad
-  crítica en Next.js cuyo único arreglo es subir a la v16, un cambio
-  mayor (rompe cómo Next.js maneja `params`/cookies en rutas async) que
-  tocaría prácticamente todas las rutas construidas en las Fases 1-6. No
-  se ha hecho sin decisión explícita — requiere su propia sesión de
-  migración y revalidación completa.
 - **Pentest y auditoría externa**: no se puede simular ni sustituir por
   código — requiere contratar una auditoría de seguridad real antes de
   manejar pacientes reales.
@@ -192,7 +200,7 @@ Todo lo marcado `// TODO Fase N` en el código, y en general:
 - Veri-Factu real (AEAT), integración bancaria (PSD2), exportación a
   programa contable → **Fase 6** (requieren certificado digital y
   credenciales de terceros)
-- Pentest, migración a Next.js 16, almacenamiento S3-compatible cifrado
+- Pentest, almacenamiento S3-compatible cifrado
   (el almacenamiento de radiografías/firmas/simulaciones hoy es local en
   disco, ver `src/lib/storage.ts`), documentación RGPD definitiva, hosting
   en la UE con HTTPS/TLS real → ver "Qué NO se ha hecho en Fase 6"
@@ -239,5 +247,11 @@ mínimo, no despliegues con datos reales sin:
 - [ ] Backups cifrados en ubicación distinta al servidor (marcable en
       `/proteccion-datos` cuando esté configurado de verdad)
 - [ ] Pentest / auditoría de seguridad externa
-- [ ] Migrar a Next.js 16 (vulnerabilidad crítica conocida en la v14, ver
-      "Qué NO se ha hecho en Fase 6")
+- [x] Next.js 16 + React 19 (`npm audit`: 0 vulnerabilidades)
+- [x] Revisión de seguridad del código: validación estricta al editar
+      pacientes, subidas solo de imágenes reales servidas con permiso y
+      auditoría, bloqueo de cuenta también por códigos MFA erróneos,
+      secreto MFA no sustituible con MFA activo, cabeceras de seguridad
+      (CSP, anti-iframe, HSTS)
+- [ ] Revisar `ipCliente()` en `src/lib/auth.ts` al elegir hosting: el
+      rate limiting por IP depende de qué cabecera fija el proxy inverso

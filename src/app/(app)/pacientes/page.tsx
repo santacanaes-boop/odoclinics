@@ -7,10 +7,11 @@ import { cifrarDeterminista } from "@/lib/cifrado";
 import { pareceDniNieCompleto } from "@/lib/dniNie";
 
 export default async function PacientesPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const { autorizado, session } = await requierePermiso("pacientes", "lectura");
   if (!autorizado) return <SinPermiso titulo="Pacientes" />;
 
@@ -34,7 +35,7 @@ export default async function PacientesPage({
   // LOPD-GDD (sección 7): el listado también expone datos de pacientes, así
   // que se registra quién lo consulta (y qué buscó), no solo la ficha.
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "VER_LISTADO_PACIENTES",
     entidad: "Paciente",
     entidadId: "listado",

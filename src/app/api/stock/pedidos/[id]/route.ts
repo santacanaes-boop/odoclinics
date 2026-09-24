@@ -13,14 +13,15 @@ const EstadoInput = z.object({
 // pedido... histórico de precios" se apoya en que el stock recibido sea real.
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("stock", "total");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = EstadoInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -55,7 +56,7 @@ export async function PATCH(
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "EDITAR_PEDIDO_COMPRA",
     entidad: "PedidoCompra",
     entidadId: pedido.id,

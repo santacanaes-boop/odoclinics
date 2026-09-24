@@ -48,7 +48,7 @@ export default function AutomatizacionesLista({
               {NOMBRES_DISPARADOR[a.disparador] ?? a.disparador}
             </p>
             <p className="text-xs text-purple-500 mt-0.5">
-              Canal: <span className="capitalize">{a.canal}</span> · "{a.plantilla}"
+              Canal: <span className="capitalize">{a.canal}</span> · “{a.plantilla}”
             </p>
           </div>
           <button

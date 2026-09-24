@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requierePermiso } from "@/lib/rbac";
 import { registrarAuditoria } from "@/lib/audit";
-import { guardarArchivo } from "@/lib/storage";
+import { guardarArchivo, leerImagenSubida } from "@/lib/storage";
 
 // Firma digital táctil real (sección 4.3.6): el canvas de dibujo del
 // cliente envía el trazo como PNG, que se guarda como el justificante de
 // firma del consentimiento in situ.
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("pacientes", "total");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -23,14 +24,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Consentimiento no encontrado" }, { status: 404 });
   }
 
-  const form = await req.formData();
+  const form = await req.formData().catch(() => null);
+  if (!form) {
+    return NextResponse.json({ error: "Formulario no válido" }, { status: 400 });
+  }
   const firma = form.get("firma");
-  if (!(firma instanceof File) || firma.type !== "image/png") {
+  // La firma sale del canvas como PNG: cualquier otro formato no es una
+  // firma hecha en la app.
+  const imagen = await leerImagenSubida(firma);
+  if ("error" in imagen || imagen.extension !== "png") {
     return NextResponse.json({ error: "Firma no válida" }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await firma.arrayBuffer());
-  const firmaImagenUrl = await guardarArchivo(buffer, "firmas", "png");
+  const firmaImagenUrl = await guardarArchivo(imagen.buffer, "firmas", "png");
 
   const actualizado = await prisma.consentimiento.update({
     where: { id: params.id },
@@ -38,7 +44,7 @@ export async function PATCH(
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "FIRMAR_CONSENTIMIENTO",
     entidad: "Paciente",
     entidadId: consentimiento.pacienteId,

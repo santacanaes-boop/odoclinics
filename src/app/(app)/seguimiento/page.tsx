@@ -145,7 +145,7 @@ export default async function SeguimientoPage() {
         <p className="text-xs text-purple-500 mb-3">
           Activar una regla la deja lista para cuando exista un canal de envío real (WhatsApp
           Business API / proveedor de email). Hoy no dispara mensajes automáticamente — ver
-          "Recomendaciones" para contactar manualmente mientras tanto.
+          “Recomendaciones” para contactar manualmente mientras tanto.
         </p>
         <AutomatizacionesLista automatizaciones={automatizaciones} />
       </section>

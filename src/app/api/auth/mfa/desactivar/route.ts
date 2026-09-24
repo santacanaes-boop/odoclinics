@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { registrarAuditoria } from "@/lib/audit";
+import { demasiadosIntentos } from "@/lib/rateLimiter";
 
 const PasswordInput = z.object({ password: z.string().min(1) });
 
@@ -17,13 +18,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = PasswordInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Falta la contraseña" }, { status: 400 });
   }
 
-  const usuarioId = (session.user as any).id;
+  const usuarioId = session.user.id;
+
+  // Evita probar contraseñas sin límite desde una sesión robada.
+  if (demasiadosIntentos(`mfa-desactivar:${usuarioId}`)) {
+    return NextResponse.json({ error: "Demasiados intentos, espera unos minutos" }, { status: 429 });
+  }
+
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
 
   if (!usuario || !(await bcrypt.compare(parsed.data.password, usuario.passwordHash))) {

@@ -12,14 +12,15 @@ const ConsentimientoInput = z.object({
 // se hace en /api/consentimientos/[id]/firmar, con el canvas táctil.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("pacientes", "total");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = ConsentimientoInput.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -34,7 +35,7 @@ export async function POST(
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "CREAR_CONSENTIMIENTO",
     entidad: "Paciente",
     entidadId: params.id,

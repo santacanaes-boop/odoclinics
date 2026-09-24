@@ -12,3 +12,7 @@ public/uploads/
 # Artefactos locales de build/TypeScript
 next-env.d.ts
 *.tsbuildinfo
+
+# Archivos clínicos subidos (radiografías, firmas, simulaciones) — fuera de
+# public/, se sirven solo vía /api/archivos con permiso y auditoría.
+almacenamiento/

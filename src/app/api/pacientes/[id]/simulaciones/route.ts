@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requierePermiso } from "@/lib/rbac";
 import { registrarAuditoria } from "@/lib/audit";
-import { guardarArchivo } from "@/lib/storage";
+import { guardarArchivo, leerImagenSubida } from "@/lib/storage";
 
 const TRATAMIENTOS = ["blanqueamiento", "carillas", "ortodoncia", "corona"] as const;
 const TratamientoInput = z.enum(TRATAMIENTOS);
@@ -14,14 +14,18 @@ const TratamientoInput = z.enum(TRATAMIENTOS);
 // generación real con un modelo de IA. Eso queda // TODO Fase 6.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   const { autorizado, session } = await requierePermiso("pacientes", "total");
   if (!autorizado) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const form = await req.formData();
+  const form = await req.formData().catch(() => null);
+  if (!form) {
+    return NextResponse.json({ error: "Formulario no válido" }, { status: 400 });
+  }
   const tratamientoParsed = TratamientoInput.safeParse(form.get("tratamiento"));
   const tono = form.get("tono");
   const antes = form.get("antes");
@@ -30,21 +34,23 @@ export async function POST(
   if (!tratamientoParsed.success) {
     return NextResponse.json({ error: "Tratamiento no válido" }, { status: 400 });
   }
-  if (!(antes instanceof File) || !antes.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Sube una foto válida" }, { status: 400 });
-  }
-  if (!(despues instanceof File) || !despues.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Falta la imagen de aproximación" }, { status: 400 });
-  }
-
-  const [bufferAntes, bufferDespues] = await Promise.all([
-    antes.arrayBuffer().then(Buffer.from),
-    despues.arrayBuffer().then(Buffer.from),
+  const [imagenAntes, imagenDespues] = await Promise.all([
+    leerImagenSubida(antes),
+    leerImagenSubida(despues),
   ]);
+  if ("error" in imagenAntes) {
+    return NextResponse.json({ error: `Foto: ${imagenAntes.error}` }, { status: 400 });
+  }
+  if ("error" in imagenDespues) {
+    return NextResponse.json(
+      { error: `Imagen de aproximación: ${imagenDespues.error}` },
+      { status: 400 }
+    );
+  }
 
   const [imagenAntesUrl, imagenDespuesUrl] = await Promise.all([
-    guardarArchivo(bufferAntes, "simulaciones", antes.type.split("/")[1] ?? "jpg"),
-    guardarArchivo(bufferDespues, "simulaciones", "jpg"),
+    guardarArchivo(imagenAntes.buffer, "simulaciones", imagenAntes.extension),
+    guardarArchivo(imagenDespues.buffer, "simulaciones", imagenDespues.extension),
   ]);
 
   const simulacion = await prisma.simulacionIA.create({
@@ -58,7 +64,7 @@ export async function POST(
   });
 
   await registrarAuditoria({
-    usuarioId: (session!.user as any).id,
+    usuarioId: session!.user.id,
     accion: "CREAR_SIMULACION_IA",
     entidad: "Paciente",
     entidadId: params.id,

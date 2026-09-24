@@ -24,18 +24,60 @@ function transformarLista(
   transformar: (s: string) => string
 ): unknown {
   if (Array.isArray(valor)) return valor.map(transformar);
-  if (valor && typeof valor === "object" && "set" in (valor as any) && Array.isArray((valor as any).set)) {
-    return { ...(valor as any), set: (valor as any).set.map(transformar) };
+  if (valor && typeof valor === "object" && "set" in valor && Array.isArray(valor.set)) {
+    return { ...valor, set: (valor.set as string[]).map(transformar) };
   }
   return valor;
 }
 
+// Los datos de create/update se modifican en sitio antes de llegar a la BD;
+// su tipo exacto depende de cada modelo, así que se tratan como un mapa.
+type Datos = Record<string, unknown>;
+
+// Campos cifrados por modelo. Las operaciones masivas (createMany,
+// updateMany) y upsert de Paciente/Usuario no pasan por los hooks de abajo:
+// si alguna vez se usan con uno de estos campos, se bloquean en vez de
+// guardar el dato en claro sin avisar (falla cerrado).
+const CAMPOS_CIFRADOS: Record<string, string[]> = {
+  Paciente: ["dniNie", "telefono", "email", "direccion"],
+  Anamnesis: ["patologiasPrevias", "alergiasMedicamentosas", "medicacionHabitual"],
+  Usuario: ["mfaSecret"],
+};
+
+function contieneCampoCifrado(modelo: string, args: unknown): boolean {
+  const campos = CAMPOS_CIFRADOS[modelo] ?? [];
+  const a = (args ?? {}) as { data?: unknown; create?: unknown; update?: unknown };
+  const bloques = [a.data, a.create, a.update].flatMap((b) => (Array.isArray(b) ? b : [b]));
+  return bloques.some(
+    (b) => b && typeof b === "object" && campos.some((c) => c in (b as Datos))
+  );
+}
+
 function crearPrismaClient() {
-  return new PrismaClient().$extends({
+  return new PrismaClient()
+    // 1) Bloqueo de operaciones masivas con campos cifrados (ver arriba).
+    .$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ model, operation, args, query }) {
+            const sinHook = ["createMany", "createManyAndReturn", "updateMany", "updateManyAndReturn"];
+            if (model !== "Anamnesis") sinHook.push("upsert");
+            if (sinHook.includes(operation) && contieneCampoCifrado(model, args)) {
+              throw new Error(
+                `${model}.${operation} con campos cifrados no está soportado: usa create/update (src/lib/prisma.ts)`
+              );
+            }
+            return query(args);
+          },
+        },
+      },
+    })
+    // 2) Cifrado/descifrado transparente de los campos // CIFRAR.
+    .$extends({
     query: {
       paciente: {
         async create({ args, query }) {
-          const data = args.data as any;
+          const data = args.data as Datos;
           if (soloTexto(data.dniNie)) data.dniNie = cifrarDeterminista(data.dniNie);
           if (soloTexto(data.telefono)) data.telefono = cifrar(data.telefono);
           if (soloTexto(data.email)) data.email = cifrar(data.email);
@@ -43,7 +85,7 @@ function crearPrismaClient() {
           return query(args);
         },
         async update({ args, query }) {
-          const data = args.data as any;
+          const data = args.data as Datos;
           if (soloTexto(data.dniNie)) data.dniNie = cifrarDeterminista(data.dniNie);
           if (soloTexto(data.telefono)) data.telefono = cifrar(data.telefono);
           if (soloTexto(data.email)) data.email = cifrar(data.email);
@@ -53,25 +95,25 @@ function crearPrismaClient() {
       },
       anamnesis: {
         async create({ args, query }) {
-          const data = args.data as any;
+          const data = args.data as Datos;
           data.patologiasPrevias = transformarLista(data.patologiasPrevias, cifrar);
           data.alergiasMedicamentosas = transformarLista(data.alergiasMedicamentosas, cifrar);
           data.medicacionHabitual = transformarLista(data.medicacionHabitual, cifrar);
           return query(args);
         },
         async update({ args, query }) {
-          const data = args.data as any;
+          const data = args.data as Datos;
           if ("patologiasPrevias" in data) data.patologiasPrevias = transformarLista(data.patologiasPrevias, cifrar);
           if ("alergiasMedicamentosas" in data) data.alergiasMedicamentosas = transformarLista(data.alergiasMedicamentosas, cifrar);
           if ("medicacionHabitual" in data) data.medicacionHabitual = transformarLista(data.medicacionHabitual, cifrar);
           return query(args);
         },
         async upsert({ args, query }) {
-          const create = args.create as any;
+          const create = args.create as Datos;
           create.patologiasPrevias = transformarLista(create.patologiasPrevias, cifrar);
           create.alergiasMedicamentosas = transformarLista(create.alergiasMedicamentosas, cifrar);
           create.medicacionHabitual = transformarLista(create.medicacionHabitual, cifrar);
-          const update = args.update as any;
+          const update = args.update as Datos;
           if ("patologiasPrevias" in update) update.patologiasPrevias = transformarLista(update.patologiasPrevias, cifrar);
           if ("alergiasMedicamentosas" in update) update.alergiasMedicamentosas = transformarLista(update.alergiasMedicamentosas, cifrar);
           if ("medicacionHabitual" in update) update.medicacionHabitual = transformarLista(update.medicacionHabitual, cifrar);
@@ -80,12 +122,12 @@ function crearPrismaClient() {
       },
       usuario: {
         async create({ args, query }) {
-          const data = args.data as any;
+          const data = args.data as Datos;
           if (soloTexto(data.mfaSecret)) data.mfaSecret = cifrar(data.mfaSecret);
           return query(args);
         },
         async update({ args, query }) {
-          const data = args.data as any;
+          const data = args.data as Datos;
           if (soloTexto(data.mfaSecret)) data.mfaSecret = cifrar(data.mfaSecret);
           return query(args);
         },

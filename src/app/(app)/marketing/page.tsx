@@ -42,7 +42,7 @@ export default async function MarketingPage() {
         <div className="bg-white rounded-xl border border-purple-100 p-6">
           <h2 className="font-medium mb-1">Origen de nuevos pacientes</h2>
           <p className="text-xs text-purple-500 mb-4">
-            Calculado desde el campo "¿Cómo nos ha conocido?" al dar de alta cada paciente.
+            Calculado desde el campo “¿Cómo nos ha conocido?” al dar de alta cada paciente.
           </p>
           {origenes.length === 0 ? (
             <p className="text-center py-6 text-purple-500">Todavía no hay pacientes registrados.</p>

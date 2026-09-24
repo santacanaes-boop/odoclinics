@@ -38,7 +38,7 @@ export async function requierePermiso(
     return { autorizado: false as const, motivo: "NO_AUTENTICADO" as const, session: null };
   }
 
-  const permisos = (session.user as any).permisos as Record<string, NivelPermiso>;
+  const permisos = session.user.permisos;
   const nivel = permisos?.[modulo] ?? "ninguno";
 
   const orden: Record<NivelPermiso, number> = { ninguno: 0, lectura: 1, total: 2 };
