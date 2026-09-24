@@ -4,20 +4,11 @@ Este archivo proporciona guía a Claude Code (claude.ai/code) para trabajar con 
 
 ## Estructura del repositorio (leer esto primero)
 
-Este repositorio distribuye actualmente su código fuente como un archivo zip,
-no como ficheros trackeados: `odoclinics-app-fase1 (1).zip`, que al
-descomprimirse genera `odoclinics-app-fase1/odoclinics-app/` — ese directorio
-interior es la raíz real del proyecto Next.js (`package.json`, `prisma/`,
-`src/`, etc.). Si ese directorio no existe en disco, descomprime el archivo
-primero:
-
-```bash
-unzip "odoclinics-app-fase1 (1).zip" -d odoclinics-app-fase1
-cd odoclinics-app-fase1/odoclinics-app
-```
-
-Todos los comandos de abajo asumen que estás dentro de esa raíz del proyecto
-(`odoclinics-app-fase1/odoclinics-app/`), no en la raíz del repositorio.
+La raíz del repositorio es la raíz del proyecto Next.js (`package.json`,
+`prisma/`, `src/`, etc.). Hasta la Fase 6 el código se distribuía como un
+zip (`odoclinics-app-fase1 (1).zip`); ya no — el código está trackeado
+directamente en git y todos los comandos de abajo se ejecutan desde la raíz
+del repositorio.
 
 El proyecto también incluye `ODOCLINICS_ESPECIFICACION_TECNICA.md`, la
 especificación completa de producto/técnica (en español) a partir de la cual
@@ -39,7 +30,7 @@ npm run db:studio                    # GUI de Prisma Studio
 npm run dev                   # http://localhost:3000, redirige a /login
 npm run build
 npm run start
-npm run lint                  # next lint
+npm run lint                  # eslint . (eslint.config.mjs)
 ```
 
 Todavía no hay suite de tests configurada (no hay Jest/Vitest/Playwright) —
@@ -47,7 +38,7 @@ no inventes comandos de test.
 
 ## Arquitectura
 
-**Stack**: Next.js 14 (App Router) + TypeScript, NextAuth (proveedor de
+**Stack**: Next.js 16 (App Router) + React 19 + TypeScript, NextAuth (proveedor de
 credenciales), Prisma + PostgreSQL, Tailwind, Zod para validación de entrada.
 
 ### Filosofía de "núcleo vertical", no pantallas horizontales
@@ -80,9 +71,17 @@ if (!autorizado) return NextResponse.json({ error: "No autorizado" }, { status: 
   `seguimiento`, `proteccion_datos`, `roles`, `integraciones`, `inicio`).
 - `NivelPermiso` es `"ninguno" | "lectura" | "total"`, ordenado y comparado
   numéricamente — el JSON `Rol.permisos` de cada rol mapea módulo → nivel.
-- `src/middleware.ts` y el layout de servidor `(app)/layout.tsx` solo
+- `src/proxy.ts` (el antiguo `middleware.ts`, renombrado en Next.js 16) y el layout de servidor `(app)/layout.tsx` solo
   imponen "sesión válida" como primera barrera (redirigen a `/login`); **no**
-  hacen autorización por módulo — eso siempre vive en la ruta de API.
+  hacen autorización por módulo.
+- Las páginas de servidor de `src/app/(app)/**` que consultan Prisma
+  directamente (sin pasar por una API) también llaman a
+  `requierePermiso(modulo, "lectura")` al principio y, si no está
+  autorizado, devuelven `<SinPermiso titulo="…" />`
+  (`src/components/SinPermiso.tsx`). Toda página nueva con datos debe
+  hacerlo — si no, un rol limitado podría ver el módulo entrando por URL.
+- El `Sidebar` recibe los permisos desde el layout y oculta los módulos
+  con nivel `"ninguno"`; es solo cosmético, la barrera real es lo anterior.
 
 ### Auditoría
 
@@ -103,9 +102,11 @@ necesitan.
   (`bloqueadoHasta` en `Usuario`).
 - El `maxAge` de sesión es de 15 minutos — deliberado, porque la app se usa
   en una tablet compartida en consulta, no un error.
-- MFA real (TOTP) implementado desde la Fase 6 (`src/lib/mfa.ts`, página
-  `/mfa`) — no se fuerza automáticamente para todos los roles, cada usuario
-  lo activa desde su cuenta. Ver el README del scaffold para el detalle.
+- MFA real (TOTP, `src/lib/mfa.ts`, página `/mfa`) **obligatorio para
+  todos**: la sesión lleva `mfaEnabled`; sin él, `src/proxy.ts` redirige
+  todo a `/mfa` (las APIs dan 403) y `requierePermiso()` deniega con
+  `MFA_PENDIENTE`. Tras activarlo o reiniciarlo se cierra la sesión para
+  emitir una nueva. Móvil perdido: `npm run mfa:reiniciar -- <email>`.
 
 ### Modelo de datos (`prisma/schema.prisma`)
 
@@ -135,6 +136,18 @@ por legibilidad, no un descuido.
   la entrada con Zod, llama a `requierePermiso`, hace la operación de
   Prisma, y llama a `registrarAuditoria`.
 - Alias de rutas `@/*` → `src/*` (ver `tsconfig.json`).
+- Next.js 16: `params` y `searchParams` son `Promise` — en rutas se usa
+  `props: { params: Promise<{ id: string }> }` y `const params = await
+  props.params;`.
+- Lee el body con `await req.json().catch(() => null)` (y
+  `req.formData().catch(() => null)`) para que una entrada mal formada dé
+  400 y no 500. Nunca pases el body tal cual a Prisma: valida con un
+  esquema Zod `.strict()` con los campos permitidos.
+- La sesión está tipada (`src/types/next-auth.d.ts`): usa
+  `session.user.id` / `session.user.permisos`, sin `as any`.
+- Archivos subidos: siempre con `leerImagenSubida()` + `guardarArchivo()`
+  (`src/lib/storage.ts`, fuera de `public/`); se sirven solo por
+  `/api/archivos/[...ruta]`, con permiso y auditoría.
 
 ### Tokens de marca
 

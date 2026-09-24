@@ -1,0 +1,18 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+
+# Radiografías y firmas subidas en local (sección 4.3.5/4.3.6) — nunca
+# datos de pacientes en el repositorio; en producción van a almacenamiento
+# S3-compatible cifrado (ver src/lib/storage.ts).
+public/uploads/
+
+# Artefactos locales de build/TypeScript
+next-env.d.ts
+*.tsbuildinfo
+
+# Archivos clínicos subidos (radiografías, firmas, simulaciones) — fuera de
+# public/, se sirven solo vía /api/archivos con permiso y auditoría.
+almacenamiento/
