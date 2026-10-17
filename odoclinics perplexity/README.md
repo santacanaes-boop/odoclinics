@@ -208,8 +208,8 @@ cámbialas antes de cualquier uso real, y activa MFA desde `/mfa` (Fase 6).
 
 ## Desplegar (demo) en Nominalia
 
-Ver `DESPLIEGUE_NOMINALIA.md`: `./scripts/empaquetar-nominalia.sh` genera un
-zip con la app ya compilada (Next.js standalone) para "Setup Node.js App" de
+Ver `DESPLIEGUE_NOMINALIA.md`: `./scripts/empaquetar-nominalia.sh` genera en
+`../exportacion-nominalia/` un zip con la app ya compilada (Next.js standalone) para "Setup Node.js App" de
 cPanel, más el SQL de creación de tablas y un seed ejecutable con `node`.
 
 ## Antes de manejar pacientes reales

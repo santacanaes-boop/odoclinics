@@ -40,7 +40,8 @@ cd "odoclinics perplexity"
 ./scripts/empaquetar-nominalia.sh
 ```
 
-Genera `odoclinics-nominalia.zip` (~30 MB) con la app **ya compilada**: el
+Genera `exportacion-nominalia/odoclinics-nominalia.zip` (en la raíz del
+repositorio, ~30 MB) con la app **ya compilada**: el
 servidor no tiene que ejecutar `npm install` ni `next build` (en hosting
 compartido suelen fallar por falta de memoria). Durante el build verás
 mensajes `PrismaClientInitializationError`: son normales (no hay base de

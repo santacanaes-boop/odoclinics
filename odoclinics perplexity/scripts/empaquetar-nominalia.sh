@@ -8,7 +8,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 RAIZ="$(pwd)"
-SALIDA="$RAIZ/odoclinics-nominalia.zip"
+# El paquete se guarda en la carpeta de exportación de la raíz del repositorio
+# (versionada en git), junto con la guía de despliegue.
+EXPORTACION="$(cd "$RAIZ/.." && pwd)/exportacion-nominalia"
+SALIDA="$EXPORTACION/odoclinics-nominalia.zip"
 TRABAJO="$(mktemp -d)"
 trap 'rm -rf "$TRABAJO"' EXIT
 
@@ -40,6 +43,8 @@ cp .env.example "$APP/.env.example"
 npx esbuild prisma/seed.ts --bundle --platform=node --target=node18 \
   --external:@prisma/client --outfile="$APP/prisma/seed.js" --log-level=warning
 
+mkdir -p "$EXPORTACION"
+cp DESPLIEGUE_NOMINALIA.md "$EXPORTACION/"
 rm -f "$SALIDA"
 (cd "$TRABAJO" && zip -qr "$SALIDA" odoclinics)
 echo "Paquete listo: $SALIDA ($(du -h "$SALIDA" | cut -f1))"
