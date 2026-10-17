@@ -9,7 +9,7 @@ Instrucciones completas en `DESPLIEGUE_NOMINALIA.md`.
 | Generado | 2026-10-17 |
 | Uso previsto | **Demo / pruebas con datos ficticios** — no apto aún para pacientes reales |
 | Next.js | 16 (standalone) · requiere Node.js 20.9 o superior |
-| SHA-256 del zip | `8ca498134587a9b69274f732faba66c549f3ac0ac24eb4b6e03d9067fa06923a` |
+| SHA-256 del zip | `f69a8f1d9075597d0acc83f705267d4350bd409c55eb254919fff49d1f69764f` |
 
 ## Contenido
 
