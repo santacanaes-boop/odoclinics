@@ -8,9 +8,18 @@ import { randomUUID } from "crypto";
 // /api/archivos/[...ruta], que comprueba permiso del módulo Pacientes y
 // registra la consulta en auditoría (sección 7).
 //
+// UPLOADS_DIR permite apuntar a una carpeta que sobreviva a los redespliegues
+// (p.ej. en cPanel, fuera de la carpeta de la aplicación que se reemplaza).
+//
 // Para producción (sección 4.3 y 7): esto debe sustituirse por almacenamiento
 // S3-compatible con cifrado en reposo, tal como recomienda la sección 9.
-const CARPETA_BASE = path.join(process.cwd(), "almacenamiento");
+//
+// turbopackIgnore (aquí y en cada acceso a disco): sin él, el build ve estas
+// rutas dinámicas y mete el proyecto entero (incluido .git) en el paquete
+// standalone.
+const CARPETA_BASE = process.env.UPLOADS_DIR
+  ? path.resolve(/* turbopackIgnore: true */ process.env.UPLOADS_DIR)
+  : path.join(/* turbopackIgnore: true */ process.cwd(), "almacenamiento");
 
 export const SUBCARPETAS = ["radiografias", "firmas", "simulaciones"] as const;
 export type Subcarpeta = (typeof SUBCARPETAS)[number];
@@ -71,11 +80,11 @@ export async function guardarArchivo(
   subcarpeta: Subcarpeta,
   extension: ExtensionImagen
 ): Promise<string> {
-  const carpeta = path.join(CARPETA_BASE, subcarpeta);
+  const carpeta = path.join(/* turbopackIgnore: true */ CARPETA_BASE, subcarpeta);
   await mkdir(carpeta, { recursive: true });
 
   const nombre = `${randomUUID()}.${extension}`;
-  await writeFile(path.join(carpeta, nombre), archivo);
+  await writeFile(path.join(/* turbopackIgnore: true */ carpeta, nombre), archivo);
 
   return `/api/archivos/${subcarpeta}/${nombre}`;
 }
@@ -95,7 +104,7 @@ export async function leerArchivo(
   if (!NOMBRE_VALIDO.test(nombre)) return null;
   const extension = nombre.split(".").pop() as ExtensionImagen;
   try {
-    const contenido = await readFile(path.join(CARPETA_BASE, subcarpeta, nombre));
+    const contenido = await readFile(path.join(/* turbopackIgnore: true */ CARPETA_BASE, subcarpeta, nombre));
     return { contenido, tipo: TIPOS[extension] };
   } catch {
     return null;

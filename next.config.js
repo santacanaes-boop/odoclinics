@@ -34,6 +34,21 @@ const cabecerasSeguridad = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Genera .next/standalone con un server.js autocontenido, para subir la app
+  // ya compilada a un hosting con cPanel ("Setup Node.js App") sin ejecutar
+  // npm install ni next build en el servidor — ver DESPLIEGUE_NOMINALIA.md.
+  output: "standalone",
+  // pdfkit carga sus fuentes estándar (.cjs/.afm) del disco en tiempo de
+  // ejecución: se deja fuera del bundle y se incluyen sus ficheros a mano
+  // (el trazado no los detecta y el PDF de presupuestos fallaría con 500).
+  serverExternalPackages: ["pdfkit"],
+  outputFileTracingIncludes: {
+    "/api/presupuestos/[id]/pdf": ["./node_modules/pdfkit/js/**"],
+  },
+  // sharp solo lo usa next/image, que la app no utiliza: ~45 MB menos.
+  outputFileTracingExcludes: {
+    "*": ["./node_modules/sharp/**", "./node_modules/@img/**"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: cabecerasSeguridad }];
   },

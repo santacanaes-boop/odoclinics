@@ -8,7 +8,12 @@ La raíz del repositorio es la raíz del proyecto Next.js (`package.json`,
 `prisma/`, `src/`, etc.). Hasta la Fase 6 el código se distribuía como un
 zip (`odoclinics-app-fase1 (1).zip`); ya no — el código está trackeado
 directamente en git y todos los comandos de abajo se ejecutan desde la raíz
-del repositorio.
+del repositorio. `main` es la única fuente de verdad: no vuelvas a crear
+copias del código en subcarpetas ni zips de código fuente.
+
+`exportacion-nominalia/` es la única excepción: guarda el paquete
+**compilado** para el hosting (lo genera `scripts/empaquetar-nominalia.sh`,
+ver `DESPLIEGUE_NOMINALIA.md`). No se edita a mano.
 
 El proyecto también incluye `ODOCLINICS_ESPECIFICACION_TECNICA.md`, la
 especificación completa de producto/técnica (en español) a partir de la cual
@@ -23,7 +28,7 @@ referenciadas en el código antes de asumir algo.
 npm install
 cp .env.example .env          # rellena DATABASE_URL, NEXTAUTH_SECRET, SEED_PASSWORD_*
 
-npx prisma migrate dev --name init   # o: npm run db:migrate
+npx prisma migrate dev               # o: npm run db:migrate (la migración inicial ya está en prisma/migrations)
 npm run db:seed                      # crea el rol "Administrador" + 2 usuarios reales
 npm run db:studio                    # GUI de Prisma Studio
 
@@ -31,7 +36,12 @@ npm run dev                   # http://localhost:3000, redirige a /login
 npm run build
 npm run start
 npm run lint                  # eslint . (eslint.config.mjs)
+./scripts/empaquetar-nominalia.sh   # regenera exportacion-nominalia/ (zip compilado para cPanel)
 ```
+
+Si cambias `prisma/schema.prisma`, crea la migración con `npx prisma
+migrate dev --name <cambio>`: el despliegue en hosting aplica esos
+`migration.sql` a mano (no hay CLI de Prisma en el servidor).
 
 Todavía no hay suite de tests configurada (no hay Jest/Vitest/Playwright) —
 no inventes comandos de test.
@@ -147,7 +157,10 @@ por legibilidad, no un descuido.
   `session.user.id` / `session.user.permisos`, sin `as any`.
 - Archivos subidos: siempre con `leerImagenSubida()` + `guardarArchivo()`
   (`src/lib/storage.ts`, fuera de `public/`); se sirven solo por
-  `/api/archivos/[...ruta]`, con permiso y auditoría.
+  `/api/archivos/[...ruta]`, con permiso y auditoría. La carpeta base es
+  `UPLOADS_DIR` (por defecto `./almacenamiento`); conserva los comentarios
+  `/* turbopackIgnore: true */` en sus rutas o el build standalone mete el
+  proyecto entero (incluido `.git`) en el paquete de despliegue.
 
 ### Tokens de marca
 
@@ -183,3 +196,26 @@ claude mcp add perplexity --scope user --env PERPLEXITY_API_KEY=<tu_clave_real> 
   pegues en este fichero.
 - En una sesión remota/efímera de Claude Code on the web este comando no
   persiste: hay que ejecutarlo en tu máquina local.
+
+### Plugin opcional "ponytail" (código mínimo, YAGNI)
+
+[ponytail](https://github.com/DietrichGebert/ponytail) es un plugin de
+Claude Code que antepone una escalera YAGNI (¿hace falta? → ¿ya existe en el
+repo? → ¿lo da el stdlib/la plataforma/una dependencia instalada? → una
+línea → solo entonces el mínimo necesario) antes de escribir código nuevo,
+sin recortar nunca validación, manejo de errores, seguridad ni
+accesibilidad. Es coherente con la filosofía de "núcleo vertical" de este
+proyecto (arriba): stack completo de auth/RBAC/auditoría, pero sin
+sobreconstruir alrededor.
+
+Es configuración **local y por desarrollador**, igual que el MCP de
+Perplexity — no se instala ni se commitea nada en este repo:
+
+```bash
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+(Son dos prompts distintos; hace falta `node` en el PATH para los hooks de
+activación). Actívalo en tu propio Claude Code si quieres ese estilo más
+austero al trabajar en este proyecto; no es un requisito del repositorio.

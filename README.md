@@ -211,6 +211,33 @@ No se han creado páginas vacías para los módulos que siguen sin lógica real
 (Roles, Integraciones) para evitar el efecto "12 pantallas a
 medias" — mejor añadirlas cuando tengan lógica real detrás.
 
+## Tener el proyecto en tu ordenador
+
+Todo el proyecto (código, documentación y paquete de exportación) vive en
+este repositorio de GitHub, rama `main`. Para tener una copia en tu PC
+(necesitas [Git](https://git-scm.com/downloads)):
+
+```bash
+git clone https://github.com/santacanaes-boop/odoclinics.git
+```
+
+Y para traer los últimos cambios más adelante, dentro de la carpeta:
+
+```bash
+git pull
+```
+
+No copies carpetas ni zips a mano entre equipos: así nunca habrá dos
+versiones distintas del proyecto.
+
+## Desplegar (demo) en Nominalia
+
+Ver `DESPLIEGUE_NOMINALIA.md`. El paquete listo para subir está en
+`exportacion-nominalia/odoclinics-nominalia.zip`; se regenera con
+`./scripts/empaquetar-nominalia.sh` (app compilada en modo standalone para
+"Setup Node.js App" de cPanel, SQL de creación de tablas y scripts de seed y
+reinicio de MFA ejecutables con `node`).
+
 ## Arrancar en local
 
 ```bash
@@ -218,7 +245,7 @@ npm install
 cp .env.example .env   # rellena DATABASE_URL, NEXTAUTH_SECRET y CIFRADO_KEY
                         # (CIFRADO_KEY: openssl rand -base64 32 — sección 7)
 
-npx prisma migrate dev --name init
+npx prisma migrate dev   # aplica prisma/migrations (ya incluye la inicial)
 npm run db:seed        # crea el rol Administrador + Dra. Domínguez / Jaume
 
 npm run dev
