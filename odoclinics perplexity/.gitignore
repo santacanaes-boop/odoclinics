@@ -8,3 +8,11 @@ node_modules
 # datos de pacientes en el repositorio; en producción van a almacenamiento
 # S3-compatible cifrado (ver src/lib/storage.ts).
 public/uploads/
+almacenamiento/
+
+# Paquete generado por scripts/empaquetar-nominalia.sh
+odoclinics-nominalia.zip
+
+# Generados por next build / tsc
+next-env.d.ts
+tsconfig.tsbuildinfo

@@ -10,6 +10,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" para desarrollo local; el resto cubre los Linux habituales de
+  // hosting con cPanel (CloudLinux/AlmaLinux = rhel) y VPS Debian/Ubuntu, para
+  // que el paquete compilado en otra máquina arranque en Nominalia.
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {

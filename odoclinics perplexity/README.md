@@ -179,7 +179,8 @@ Todo lo marcado `// TODO Fase N` en el código, y en general:
   credenciales de terceros)
 - Pentest, migración a Next.js 16, almacenamiento S3-compatible cifrado
   (el almacenamiento de radiografías/firmas/simulaciones hoy es local en
-  disco, ver `src/lib/storage.ts`), documentación RGPD definitiva, hosting
+  disco, fuera de `public/` y servido solo con sesión y auditoría vía
+  `/api/archivos` — ver `src/lib/storage.ts`), documentación RGPD definitiva, hosting
   en la UE con HTTPS/TLS real → ver "Qué NO se ha hecho en Fase 6"
 
 No se han creado páginas vacías para los módulos que siguen sin lógica real
@@ -193,7 +194,7 @@ npm install
 cp .env.example .env   # rellena DATABASE_URL, NEXTAUTH_SECRET y CIFRADO_KEY
                         # (CIFRADO_KEY: openssl rand -base64 32 — sección 7)
 
-npx prisma migrate dev --name init
+npx prisma migrate dev   # aplica prisma/migrations (ya incluye la inicial)
 npm run db:seed        # crea el rol Administrador + Dra. Domínguez / Jaume
 
 npm run dev
@@ -204,6 +205,12 @@ Abre `http://localhost:3000` → redirige a `/login`.
 Las contraseñas iniciales del seed son de un solo uso simbólico
 (`cambiar-en-primer-login` si no defines `SEED_PASSWORD_*` en `.env`) —
 cámbialas antes de cualquier uso real, y activa MFA desde `/mfa` (Fase 6).
+
+## Desplegar (demo) en Nominalia
+
+Ver `DESPLIEGUE_NOMINALIA.md`: `./scripts/empaquetar-nominalia.sh` genera un
+zip con la app ya compilada (Next.js standalone) para "Setup Node.js App" de
+cPanel, más el SQL de creación de tablas y un seed ejecutable con `node`.
 
 ## Antes de manejar pacientes reales
 

@@ -4,8 +4,10 @@ Este archivo proporciona guía a Claude Code (claude.ai/code) para trabajar con 
 
 ## Estructura del repositorio (leer esto primero)
 
-Este repositorio distribuye actualmente su código fuente como un archivo zip,
-no como ficheros trackeados: `odoclinics-app-fase1 (1).zip`, que al
+El código fuente está trackeado en la carpeta `odoclinics perplexity/` (raíz
+real del proyecto Next.js). Se mantiene además una copia idéntica en el zip
+`odoclinics-app-fase1 (1).zip` — si cambias la carpeta, regenera el zip para
+que no diverjan. El zip, al
 descomprimirse genera `odoclinics-app-fase1/odoclinics-app/` — ese directorio
 interior es la raíz real del proyecto Next.js (`package.json`, `prisma/`,
 `src/`, etc.). Si ese directorio no existe en disco, descomprime el archivo
@@ -17,7 +19,7 @@ cd odoclinics-app-fase1/odoclinics-app
 ```
 
 Todos los comandos de abajo asumen que estás dentro de esa raíz del proyecto
-(`odoclinics-app-fase1/odoclinics-app/`), no en la raíz del repositorio.
+(`odoclinics perplexity/`), no en la raíz del repositorio.
 
 El proyecto también incluye `ODOCLINICS_ESPECIFICACION_TECNICA.md`, la
 especificación completa de producto/técnica (en español) a partir de la cual
@@ -32,7 +34,7 @@ referenciadas en el código antes de asumir algo.
 npm install
 cp .env.example .env          # rellena DATABASE_URL, NEXTAUTH_SECRET, SEED_PASSWORD_*
 
-npx prisma migrate dev --name init   # o: npm run db:migrate
+npx prisma migrate dev               # o: npm run db:migrate (la migración inicial ya está en prisma/migrations)
 npm run db:seed                      # crea el rol "Administrador" + 2 usuarios reales
 npm run db:studio                    # GUI de Prisma Studio
 
@@ -40,6 +42,7 @@ npm run dev                   # http://localhost:3000, redirige a /login
 npm run build
 npm run start
 npm run lint                  # next lint
+./scripts/empaquetar-nominalia.sh   # zip compilado para cPanel (ver DESPLIEGUE_NOMINALIA.md)
 ```
 
 Todavía no hay suite de tests configurada (no hay Jest/Vitest/Playwright) —
@@ -126,6 +129,18 @@ La validación de solapes de `Cita` (`src/app/api/citas/route.ts`) se hace
 trayendo las citas del mismo día y mismo `gabinete` y comparando los rangos
 horarios en memoria, en vez de una consulta SQL de solape — es deliberado
 por legibilidad, no un descuido.
+
+### Archivos subidos y despliegue
+
+Radiografías, firmas y simulaciones se guardan en disco **fuera de
+`public/`** (`UPLOADS_DIR`, por defecto `./almacenamiento`) vía
+`src/lib/storage.ts`, y solo se sirven por `/api/archivos/[subcarpeta]/[nombre]`
+con `requierePermiso` + `registrarAuditoria`. No vuelvas a guardar datos de
+pacientes en `public/`: se servirían sin control (y Next.js en producción no
+sirve lo añadido a `public/` tras el build). `next.config.js` usa
+`output: "standalone"` para el despliegue en hosting cPanel
+(`DESPLIEGUE_NOMINALIA.md`); los `binaryTargets` de Prisma cubren los Linux
+habituales de hosting.
 
 ### Estructura de rutas
 
